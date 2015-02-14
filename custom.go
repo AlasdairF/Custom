@@ -8,14 +8,14 @@ import (
  "errors"
 )
 
-type reader struct {
+type Reader struct {
  f io.ReadCloser
  at int		// the cursor for where I am in buf
  n int		// how much uncompressed but as of yet unparsed data is left in buf
  buf []byte	// the buffer for reading data
 }
 
-type writer struct {
+type Writer struct {
  f *zlib.Writer
  buf8 []byte
  buf16 []byte
@@ -24,15 +24,15 @@ type writer struct {
  buf64 []byte
 }
 
-func (w *writer) Close() {
+func (w *Writer) Close() {
 	w.f.Close()
 }
 
-func (r *reader) Close() {
+func (r *Reader) Close() {
 	r.f.Close()
 }
 
-func (r *reader) EOF() error {
+func (r *Reader) EOF() error {
 	_, err := r.f.Read(r.buf)
 	r.f.Close()
 	if err == io.EOF {
@@ -44,8 +44,8 @@ func (r *reader) EOF() error {
 	return err
 }
 
-func NewReader(f *os.File, buffersize int) (*reader, error) {
-	r := new(reader)
+func NewReader(f *os.File, buffersize int) (*Reader, error) {
+	r := new(Reader)
 	var err error
 	r.f, err = zlib.NewReader(f)
 	if err != nil {
@@ -55,8 +55,8 @@ func NewReader(f *os.File, buffersize int) (*reader, error) {
 	return r, nil
 }
 
-func NewWriter(f *os.File) *writer {
-	w := new(writer)
+func NewWriter(f *os.File) *Writer {
+	w := new(Writer)
 	w.f = zlib.NewWriter(f)
 	w.buf8 = make([]byte, 1)
 	w.buf16 = make([]byte, 2)
@@ -66,11 +66,11 @@ func NewWriter(f *os.File) *writer {
 	return w
 }
 
-func (w *writer) Write(b []byte) {
+func (w *Writer) Write(b []byte) {
 	w.f.Write(b)
 }
 
-func (w *writer) WriteBool2(v1, v2 bool) {
+func (w *Writer) WriteBool2(v1, v2 bool) {
 	if v1 {
 		w.buf8[0] = 1
 	} else {
@@ -82,7 +82,7 @@ func (w *writer) WriteBool2(v1, v2 bool) {
 	w.f.Write(w.buf8)
 }
 
-func (w *writer) WriteBool(v bool) {
+func (w *Writer) WriteBool(v bool) {
 	if v {
 		w.buf8[0] = 1
 	} else {
@@ -91,18 +91,18 @@ func (w *writer) WriteBool(v bool) {
 	w.f.Write(w.buf8)
 }
 
-func (w *writer) Write4(v1, v2 uint8) {
+func (w *Writer) Write4(v1, v2 uint8) {
 	v1 |= v2 << 4
 	w.buf8[0] = v1
 	w.f.Write(w.buf8)
 }
 
-func (w *writer) Write8(v uint8) {
+func (w *Writer) Write8(v uint8) {
 	w.buf8[0] = v
 	w.f.Write(w.buf8)
 }
 
-func (w *writer) Write16(v uint16) {
+func (w *Writer) Write16(v uint16) {
 	w.buf16[0] = byte(v)
 	w.buf16[1] = byte(v >> 8)
 	w.f.Write(w.buf16)
@@ -110,7 +110,7 @@ func (w *writer) Write16(v uint16) {
 
 // If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
 // This is only useful if it is expected that the value will be <255 more than half the time
-func (w *writer) Write16Variable(v uint16) {
+func (w *Writer) Write16Variable(v uint16) {
 	if v < 255 {
 		w.buf8[0] = byte(v)
 		w.f.Write(w.buf8)
@@ -122,7 +122,7 @@ func (w *writer) Write16Variable(v uint16) {
 	w.f.Write(w.buf24)
 }
 
-func (w *writer) WriteInt16Variable(v int16) {
+func (w *Writer) WriteInt16Variable(v int16) {
 	if v > -128 && v < 128 {
 		w.buf8[0] = byte(v + 127)
 		w.f.Write(w.buf8)
@@ -135,7 +135,7 @@ func (w *writer) WriteInt16Variable(v int16) {
 	w.f.Write(w.buf24)
 }
 
-func (w *writer) Write32(v uint32) {
+func (w *Writer) Write32(v uint32) {
 	w.buf32[0] = byte(v)
 	w.buf32[1] = byte(v >> 8)
 	w.buf32[2] = byte(v >> 16)
@@ -143,11 +143,11 @@ func (w *writer) Write32(v uint32) {
 	w.f.Write(w.buf32)
 }
 
-func (w *writer) WriteFloat32(flt float32) {
+func (w *Writer) WriteFloat32(flt float32) {
 	w.Write32(math.Float32bits(flt))
 }
 
-func (w *writer) Write64(v uint64) {
+func (w *Writer) Write64(v uint64) {
 	w.buf64[0] = byte(v)
 	w.buf64[1] = byte(v >> 8)
 	w.buf64[2] = byte(v >> 16)
@@ -160,7 +160,7 @@ func (w *writer) Write64(v uint64) {
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (w *writer) Write64Variable(v uint64) {
+func (w *Writer) Write64Variable(v uint64) {
 	s := numbytes(v)
 	w.Write8(s)
 	w.buf64[0] = byte(v)
@@ -175,7 +175,7 @@ func (w *writer) Write64Variable(v uint64) {
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (w *writer) Write64Variable2(v1 uint64, v2 uint64) {
+func (w *Writer) Write64Variable2(v1 uint64, v2 uint64) {
 	s1 := numbytes(v1)
 	s2 := numbytes(v2)
 	w.Write8((s1 << 4) | s2)
@@ -213,11 +213,11 @@ func numbytes(v uint64) uint8 {
 	}
 }
 
-func (w *writer) WriteFloat64(flt float64) {
+func (w *Writer) WriteFloat64(flt float64) {
 	w.Write64(math.Float64bits(flt))
 }
 
-func (w *writer) WriteString8(s string) {
+func (w *Writer) WriteString8(s string) {
 	tmp := []byte(s)
 	if len(tmp) > 255 {
 		tmp = tmp[0:255]
@@ -227,7 +227,7 @@ func (w *writer) WriteString8(s string) {
 	w.f.Write(tmp)
 }
 
-func (w *writer) WriteString16(s string) {
+func (w *Writer) WriteString16(s string) {
 	tmp := []byte(s)
 	if len(tmp) > 65535 {
 		tmp = tmp[0:65535]
@@ -236,7 +236,7 @@ func (w *writer) WriteString16(s string) {
 	w.f.Write(tmp)
 }
 
-func (w *writer) WriteString32(s string) {
+func (w *Writer) WriteString32(s string) {
 	tmp := []byte(s)
 	if len(tmp) > 4294967295 {
 		tmp = tmp[0:4294967295]
@@ -246,14 +246,14 @@ func (w *writer) WriteString32(s string) {
 }
 
 // 12 bits and 4 bits
-func (w *writer) Write12(v1, v2 uint16) {
+func (w *Writer) Write12(v1, v2 uint16) {
 	v1 |= v2 << 12
 	w.buf16[0] = byte(v1)
 	w.buf16[1] = byte(v1 >> 8)
 	w.f.Write(w.buf16)
 }
 
-func (w *writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
+func (w *Writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
 	if b1 {
 		v1 |= 128
 	}
@@ -270,7 +270,7 @@ func (w *writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
 	w.f.Write(w.buf8)
 }
 
-func (w *writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
+func (w *Writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
 	v1 |= v2 << 3
 	v1 |= v3 << 5
 	if b1 {
@@ -280,7 +280,7 @@ func (w *writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
 	w.f.Write(w.buf8)
 }
 
-func (r *reader) ReadBool2() (bool, bool) {
+func (r *Reader) ReadBool2() (bool, bool) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -300,7 +300,7 @@ func (r *reader) ReadBool2() (bool, bool) {
 	return b1, b2
 }
 
-func (r *reader) ReadBool() bool {
+func (r *Reader) ReadBool() bool {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -318,7 +318,7 @@ func (r *reader) ReadBool() bool {
 	return b1
 }
 
-func (r *reader) Read4() (uint8, uint8) {
+func (r *Reader) Read4() (uint8, uint8) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -333,7 +333,7 @@ func (r *reader) Read4() (uint8, uint8) {
 	return res1, res2
 }
 
-func (r *reader) Read8() uint8 {
+func (r *Reader) Read8() uint8 {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -348,7 +348,7 @@ func (r *reader) Read8() uint8 {
 	return res
 }
 
-func (r *reader) Read(b []byte) {
+func (r *Reader) Read(b []byte) {
 	x := len(b)
 	for r.n < x {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
@@ -364,7 +364,7 @@ func (r *reader) Read(b []byte) {
 	r.n -= x
 }
 
-func (r *reader) Readx(x int) []byte {
+func (r *Reader) Readx(x int) []byte {
 	for r.n < x {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -381,7 +381,7 @@ func (r *reader) Readx(x int) []byte {
 	return tmp
 }
 
-func (r *reader) ReadUTF8() []byte {
+func (r *Reader) ReadUTF8() []byte {
 	first := r.Read8()
 	if first < 128 { // length 1
 		b := make([]byte, 1)
@@ -402,7 +402,7 @@ func (r *reader) ReadUTF8() []byte {
 	}
 }
 
-func (r *reader) Read16() uint16 {
+func (r *Reader) Read16() uint16 {
 	for r.n < 2 {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -420,7 +420,7 @@ func (r *reader) Read16() uint16 {
 
 // If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
 // This is only useful if it is expected that the value will be <255 more than half the time
-func (r *reader) Read16Variable() uint16 {
+func (r *Reader) Read16Variable() uint16 {
 	v := r.Read8()
 	if v < 255 {
 		return uint16(v)
@@ -428,7 +428,7 @@ func (r *reader) Read16Variable() uint16 {
 	return r.Read16()
 }
 
-func (r *reader) ReadInt16Variable() int16 {
+func (r *Reader) ReadInt16Variable() int16 {
 	v := r.Read8()
 	if v < 255 {
 		return int16(v) - 127
@@ -436,7 +436,7 @@ func (r *reader) ReadInt16Variable() int16 {
 	return int16(r.Read16())
 }
 
-func (r *reader) Read32() uint32 {
+func (r *Reader) Read32() uint32 {
 	for r.n < 4 {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -452,11 +452,11 @@ func (r *reader) Read32() uint32 {
 	return res
 }
 
-func (r *reader) ReadFloat32() float32 {
+func (r *Reader) ReadFloat32() float32 {
 	return math.Float32frombits(r.Read32())
 }
 
-func (r *reader) Read64() uint64 {
+func (r *Reader) Read64() uint64 {
 	for r.n < 8 {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -473,7 +473,7 @@ func (r *reader) Read64() uint64 {
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (r *reader) Read64Variable() uint64 {
+func (r *Reader) Read64Variable() uint64 {
 	s1 := int(r.Read8())
 	for r.n < s1 {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
@@ -501,7 +501,7 @@ func (r *reader) Read64Variable() uint64 {
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (r *reader) Read64Variable2() (uint64, uint64) {
+func (r *Reader) Read64Variable2() (uint64, uint64) {
 	s2 := r.Read8()
 	s1 := s2 >> 4
 	s2 &= 15
@@ -542,24 +542,24 @@ func (r *reader) Read64Variable2() (uint64, uint64) {
 	return res1, res2
 }
 
-func (r *reader) ReadFloat64() float64 {
+func (r *Reader) ReadFloat64() float64 {
 	return math.Float64frombits(r.Read64())
 }
 
-func (r *reader) ReadString8() string {
+func (r *Reader) ReadString8() string {
 	return string(r.Readx(int(r.Read8())))
 }
 
-func (r *reader) ReadString16() string {
+func (r *Reader) ReadString16() string {
 	return string(r.Readx(int(r.Read16())))
 }
 
-func (r *reader) ReadString32() string {
+func (r *Reader) ReadString32() string {
 	return string(r.Readx(int(r.Read32())))
 }
 
 // 12 bits for uint16 and 4 bits for uint8
-func (r *reader) Read12() (uint16, uint16) {
+func (r *Reader) Read12() (uint16, uint16) {
 	for r.n < 2 {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -575,7 +575,7 @@ func (r *reader) Read12() (uint16, uint16) {
 	return res & 4095, res >> 12
 }
 
-func (r *reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
+func (r *Reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -603,7 +603,7 @@ func (r *reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
 	return c & 7, b1, b2, b3, b4
 }
 
-func (r *reader) ReadSpecial2() (uint8, uint8, uint8, bool) {
+func (r *Reader) ReadSpecial2() (uint8, uint8, uint8, bool) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
