@@ -66,6 +66,17 @@ func NewWriter(f *os.File) *Writer {
 	return w
 }
 
+func NewWriterLevel(f *os.File, level int) *Writer {
+	w := new(Writer)
+	w.f, _ = zlib.NewWriterLevel(f, level)
+	w.buf8 = make([]byte, 1)
+	w.buf16 = make([]byte, 2)
+	w.buf24 = make([]byte, 3)
+	w.buf32 = make([]byte, 4)
+	w.buf64 = make([]byte, 8)
+	return w
+}
+
 func (w *Writer) Write(b []byte) {
 	w.f.Write(b)
 }
