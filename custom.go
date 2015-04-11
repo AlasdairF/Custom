@@ -146,6 +146,13 @@ func (w *Writer) WriteInt16Variable(v int16) {
 	w.f.Write(w.buf24)
 }
 
+func (w *Writer) Write24(v uint32) {
+	w.buf32[0] = byte(v)
+	w.buf32[1] = byte(v >> 8)
+	w.buf32[2] = byte(v >> 16)
+	w.f.Write(w.buf32[0:3])
+}
+
 func (w *Writer) Write32(v uint32) {
 	w.buf32[0] = byte(v)
 	w.buf32[1] = byte(v >> 8)
@@ -445,6 +452,22 @@ func (r *Reader) ReadInt16Variable() int16 {
 		return int16(v) - 127
 	}
 	return int16(r.Read16())
+}
+
+func (r *Reader) Read24() uint32 {
+	for r.n < 3 {
+		copy(r.buf, r.buf[r.at:r.at+r.n])
+		r.at = 0
+		m, err := r.f.Read(r.buf[r.n:])
+		if err != nil {
+			panic(err)
+		}
+		r.n += m
+	}
+	res := uint32(r.buf[r.at]) | uint32(r.buf[r.at+1])<<8 | uint32(r.buf[r.at+2])<<16
+	r.at += 3
+	r.n -= 3
+	return res
 }
 
 func (r *Reader) Read32() uint32 {
