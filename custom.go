@@ -21,6 +21,7 @@ type Writer struct {
  buf16 []byte
  buf24 []byte
  buf32 []byte
+ buf48 []byte
  buf64 []byte
 }
 
@@ -62,6 +63,7 @@ func NewWriter(f *os.File) *Writer {
 	w.buf16 = make([]byte, 2)
 	w.buf24 = make([]byte, 3)
 	w.buf32 = make([]byte, 4)
+	w.buf48 = make([]byte, 6)
 	w.buf64 = make([]byte, 8)
 	return w
 }
@@ -73,6 +75,7 @@ func NewWriterLevel(f *os.File, level int) *Writer {
 	w.buf16 = make([]byte, 2)
 	w.buf24 = make([]byte, 3)
 	w.buf32 = make([]byte, 4)
+	w.buf48 = make([]byte, 6)
 	w.buf64 = make([]byte, 8)
 	return w
 }
@@ -147,10 +150,10 @@ func (w *Writer) WriteInt16Variable(v int16) {
 }
 
 func (w *Writer) Write24(v uint32) {
-	w.buf32[0] = byte(v)
-	w.buf32[1] = byte(v >> 8)
-	w.buf32[2] = byte(v >> 16)
-	w.f.Write(w.buf32[0:3])
+	w.buf24[0] = byte(v)
+	w.buf24[1] = byte(v >> 8)
+	w.buf24[2] = byte(v >> 16)
+	w.f.Write(w.buf24)
 }
 
 func (w *Writer) Write32(v uint32) {
@@ -159,6 +162,16 @@ func (w *Writer) Write32(v uint32) {
 	w.buf32[2] = byte(v >> 16)
 	w.buf32[3] = byte(v >> 24)
 	w.f.Write(w.buf32)
+}
+
+func (w *Writer) Write48(v uint64) {
+	w.buf48[0] = byte(v)
+	w.buf48[1] = byte(v >> 8)
+	w.buf48[2] = byte(v >> 16)
+	w.buf48[3] = byte(v >> 24)
+	w.buf48[4] = byte(v >> 32)
+	w.buf48[5] = byte(v >> 40)
+	w.f.Write(w.buf48)
 }
 
 func (w *Writer) WriteFloat32(flt float32) {
@@ -488,6 +501,22 @@ func (r *Reader) Read32() uint32 {
 
 func (r *Reader) ReadFloat32() float32 {
 	return math.Float32frombits(r.Read32())
+}
+
+func (r *Reader) Read48() uint64 {
+	for r.n < 6 {
+		copy(r.buf, r.buf[r.at:r.at+r.n])
+		r.at = 0
+		m, err := r.f.Read(r.buf[r.n:])
+		if err != nil {
+			panic(err)
+		}
+		r.n += m
+	}
+	res := uint64(r.buf[r.at]) | uint64(r.buf[r.at+1])<<8 | uint64(r.buf[r.at+2])<<16 | uint64(r.buf[r.at+3])<<24 | uint64(r.buf[r.at+4])<<32 | uint64(r.buf[r.at+5])<<40
+	r.at += 6
+	r.n -= 6
+	return res
 }
 
 func (r *Reader) Read64() uint64 {
