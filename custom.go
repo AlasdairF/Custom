@@ -3,7 +3,6 @@ package custom
 import (
  "compress/zlib"
  "io"
- "os"
  "math"
  "errors"
 )
