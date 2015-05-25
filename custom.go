@@ -35,7 +35,6 @@ func (r *Reader) Close() {
 
 func (r *Reader) EOF() error {
 	_, err := r.f.Read(r.buf)
-	r.f.Close()
 	if err == io.EOF {
 		return nil
 	}
@@ -45,7 +44,7 @@ func (r *Reader) EOF() error {
 	return err
 }
 
-func NewReader(f *os.File, buffersize int) (*Reader, error) {
+func NewReader(f io.Reader, buffersize int) (*Reader, error) {
 	r := new(Reader)
 	var err error
 	r.f, err = zlib.NewReader(f)
@@ -56,7 +55,7 @@ func NewReader(f *os.File, buffersize int) (*Reader, error) {
 	return r, nil
 }
 
-func NewWriter(f *os.File) *Writer {
+func NewWriter(f io.Writer) *Writer {
 	w := new(Writer)
 	w.f = zlib.NewWriter(f)
 	w.buf8 = make([]byte, 1)
@@ -68,7 +67,7 @@ func NewWriter(f *os.File) *Writer {
 	return w
 }
 
-func NewWriterLevel(f *os.File, level int) *Writer {
+func NewWriterLevel(f io.Writer, level int) *Writer {
 	w := new(Writer)
 	w.f, _ = zlib.NewWriterLevel(f, level)
 	w.buf8 = make([]byte, 1)
