@@ -2,6 +2,8 @@
 
 This package makes it easy to save any data to file and read it back quickly and easily, taking advantage of fast binary encoding and Zlib compression. It is much more efficient that using gob encoding and decoding.
 
+The purpose of this package is to enable extremely efficient reading and writing of structures that consist of mostly number types, which let's face it is everything since strings are also based on slices of bytes which themselves are really uint8.
+
 ### Writing
 
 Attach to io.writer with default Zlib compression level:
