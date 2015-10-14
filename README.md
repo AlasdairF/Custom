@@ -70,9 +70,9 @@ Write a uint64 value in which only 48 bits need to be encoded:
 Write a uint64 value:
 
      v := uint64(1000000000000000)
-     w.Write48(v)
+     w.Write64(v)
 
-Write a variable uint64, this will always use 1 byte more than the minimum number of bytes that can be used to encode the integer:
+Write a variable uint64, this will always use 1 byte more than the minimum number of bytes that can be used to encode the integer, i.e. between 2 - 9 bytes depending on the integer.
 
      v := uint64(1000)
      w.Write64Variable(v)
