@@ -1,6 +1,7 @@
 package custom
 
 import (
+ "github.com/AlasdairF/Buffer"
  "compress/zlib"
  "io"
  "math"
@@ -8,24 +9,20 @@ import (
 )
 
 type Reader struct {
- f io.ReadCloser
- at int		// the cursor for where I am in buf
- n int		// how much uncompressed but as of yet unparsed data is left in buf
- buf []byte	// the buffer for reading data
+	f io.ReadCloser
+	at int		// the cursor for where I am in buf
+	n int		// how much uncompressed but as of yet unparsed data is left in buf
+	buf []byte	// the buffer for reading data
 }
 
 type Writer struct {
- f *zlib.Writer
- buf8 []byte
- buf16 []byte
- buf24 []byte
- buf32 []byte
- buf48 []byte
- buf64 []byte
+	z *zlib.Writer
+	f *buffer.Buffer
 }
 
 func (w *Writer) Close() {
-	w.f.Close()
+	w.f.Flush()
+	w.z.Close()
 }
 
 func (r *Reader) Close() {
@@ -56,25 +53,15 @@ func NewReader(f io.Reader, buffersize int) (*Reader, error) {
 
 func NewWriter(f io.Writer) *Writer {
 	w := new(Writer)
-	w.f = zlib.NewWriter(f)
-	w.buf8 = make([]byte, 1)
-	w.buf16 = make([]byte, 2)
-	w.buf24 = make([]byte, 3)
-	w.buf32 = make([]byte, 4)
-	w.buf48 = make([]byte, 6)
-	w.buf64 = make([]byte, 8)
+	w.z = zlib.NewWriter(f)
+	w.f = buffer.New(w.z)
 	return w
 }
 
 func NewWriterLevel(f io.Writer, level int) *Writer {
 	w := new(Writer)
-	w.f, _ = zlib.NewWriterLevel(f, level)
-	w.buf8 = make([]byte, 1)
-	w.buf16 = make([]byte, 2)
-	w.buf24 = make([]byte, 3)
-	w.buf32 = make([]byte, 4)
-	w.buf48 = make([]byte, 6)
-	w.buf64 = make([]byte, 8)
+	w.z, _ = zlib.NewWriterLevel(f, level)
+	w.f = buffer.New(w.z)
 	return w
 }
 
@@ -83,93 +70,66 @@ func (w *Writer) Write(b []byte) {
 }
 
 func (w *Writer) WriteBool2(v1, v2 bool) {
+	var b byte
 	if v1 {
-		w.buf8[0] = 1
-	} else {
-		w.buf8[0] = 0
+		b = 1
 	}
 	if v2 {
-		w.buf8[0] |= 2
+		b |= 2
 	}
-	w.f.Write(w.buf8)
+	w.f.WriteByte(b)
 }
 
 func (w *Writer) WriteBool(v bool) {
+	var b byte
 	if v {
-		w.buf8[0] = 1
-	} else {
-		w.buf8[0] = 0
+		b = 1
 	}
-	w.f.Write(w.buf8)
+	w.f.WriteByte(b)
 }
 
 func (w *Writer) Write4(v1, v2 uint8) {
 	v1 |= v2 << 4
-	w.buf8[0] = v1
-	w.f.Write(w.buf8)
+	w.f.WriteByte(v1)
 }
 
 func (w *Writer) Write8(v uint8) {
-	w.buf8[0] = v
-	w.f.Write(w.buf8)
+	w.f.WriteByte(v)
 }
 
 func (w *Writer) Write16(v uint16) {
-	w.buf16[0] = byte(v)
-	w.buf16[1] = byte(v >> 8)
-	w.f.Write(w.buf16)
+	w.f.Write2Bytes(byte(v), byte(v >> 8))
 }
 
 // If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
 // This is only useful if it is expected that the value will be <255 more than half the time
 func (w *Writer) Write16Variable(v uint16) {
 	if v < 255 {
-		w.buf8[0] = byte(v)
-		w.f.Write(w.buf8)
+		w.f.WriteByte(byte(v))
 		return
 	}
-	w.buf24[0] = 255
-	w.buf24[1] = byte(v)
-	w.buf24[2] = byte(v >> 8)
-	w.f.Write(w.buf24)
+	w.f.Write3Bytes(255, byte(v), byte(v >> 8))
 }
 
 func (w *Writer) WriteInt16Variable(v int16) {
 	if v > -128 && v < 128 {
-		w.buf8[0] = byte(v + 127)
-		w.f.Write(w.buf8)
+		w.f.WriteByte(byte(v + 127))
 		return
 	}
 	v2 := uint16(v)
-	w.buf24[0] = 255
-	w.buf24[1] = byte(v2)
-	w.buf24[2] = byte(v2 >> 8)
-	w.f.Write(w.buf24)
+	w.f.Write3Bytes(255, byte(v2), byte(v2 >> 8))
 }
 
 func (w *Writer) Write24(v uint32) {
-	w.buf24[0] = byte(v)
-	w.buf24[1] = byte(v >> 8)
-	w.buf24[2] = byte(v >> 16)
-	w.f.Write(w.buf24)
+	w.f.Write3Bytes(byte(v), byte(v >> 8), byte(v >> 16))
 }
 
 func (w *Writer) Write32(v uint32) {
-	w.buf32[0] = byte(v)
-	w.buf32[1] = byte(v >> 8)
-	w.buf32[2] = byte(v >> 16)
-	w.buf32[3] = byte(v >> 24)
-	w.f.Write(w.buf32)
+	w.f.Write4Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
 }
 
 func (w *Writer) Write48(v uint64) {
-	w.buf48[0] = byte(v)
-	w.buf48[1] = byte(v >> 8)
-	w.buf48[2] = byte(v >> 16)
-	w.buf48[3] = byte(v >> 24)
-	w.buf48[4] = byte(v >> 32)
-	w.buf48[5] = byte(v >> 40)
-	w.f.Write(w.buf48)
+	w.f.Write6Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
 }
 
 func (w *Writer) WriteFloat32(flt float32) {
@@ -177,55 +137,49 @@ func (w *Writer) WriteFloat32(flt float32) {
 }
 
 func (w *Writer) Write64(v uint64) {
-	w.buf64[0] = byte(v)
-	w.buf64[1] = byte(v >> 8)
-	w.buf64[2] = byte(v >> 16)
-	w.buf64[3] = byte(v >> 24)
-	w.buf64[4] = byte(v >> 32)
-	w.buf64[5] = byte(v >> 40)
-	w.buf64[6] = byte(v >> 48)
-	w.buf64[7] = byte(v >> 56)
-	w.f.Write(w.buf64)
+	w.f.Write8Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
 func (w *Writer) Write64Variable(v uint64) {
-	s := numbytes(v)
-	w.Write8(s)
-	w.buf64[0] = byte(v)
-	w.buf64[1] = byte(v >> 8)
-	w.buf64[2] = byte(v >> 16)
-	w.buf64[3] = byte(v >> 24)
-	w.buf64[4] = byte(v >> 32)
-	w.buf64[5] = byte(v >> 40)
-	w.buf64[6] = byte(v >> 48)
-	w.buf64[7] = byte(v >> 56)
-	w.f.Write(w.buf64[0:s])
+	switch numbytes(v) {
+		case 0: w.f.WriteByte(0)
+		case 1: w.f.Write2Bytes(1, byte(v))
+		case 2: w.f.Write3Bytes(2, byte(v), byte(v >> 8))
+		case 3: w.f.Write4Bytes(3, byte(v), byte(v >> 8), byte(v >> 16))
+		case 4: w.f.Write5Bytes(4, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+		case 5: w.f.Write6Bytes(5, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32))
+		case 6: w.f.Write7Bytes(6, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
+		case 7: w.f.Write8Bytes(7, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48))
+		case 8: w.f.Write9Bytes(8, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 25), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
+	}
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
 func (w *Writer) Write64Variable2(v1 uint64, v2 uint64) {
 	s1 := numbytes(v1)
 	s2 := numbytes(v2)
-	w.Write8((s1 << 4) | s2)
-	w.buf64[0] = byte(v1)
-	w.buf64[1] = byte(v1 >> 8)
-	w.buf64[2] = byte(v1 >> 16)
-	w.buf64[3] = byte(v1 >> 24)
-	w.buf64[4] = byte(v1 >> 32)
-	w.buf64[5] = byte(v1 >> 40)
-	w.buf64[6] = byte(v1 >> 48)
-	w.buf64[7] = byte(v1 >> 56)
-	w.f.Write(w.buf64[0:s1])
-	w.buf64[0] = byte(v2)
-	w.buf64[1] = byte(v2 >> 8)
-	w.buf64[2] = byte(v2 >> 16)
-	w.buf64[3] = byte(v2 >> 24)
-	w.buf64[4] = byte(v2 >> 32)
-	w.buf64[5] = byte(v2 >> 40)
-	w.buf64[6] = byte(v2 >> 48)
-	w.buf64[7] = byte(v2 >> 56)
-	w.f.Write(w.buf64[0:s2])
+	w.f.WriteByte((s1 << 4) | s2)
+	switch s1 {
+		case 1: w.f.WriteByte(byte(v1))
+		case 2: w.f.Write2Bytes(byte(v1), byte(v1 >> 8))
+		case 3: w.f.Write3Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16))
+		case 4: w.f.Write4Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24))
+		case 5: w.f.Write5Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32))
+		case 6: w.f.Write6Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40))
+		case 7: w.f.Write7Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48))
+		case 8: w.f.Write8Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
+	}
+	switch s2 {
+		case 1: w.f.WriteByte(byte(v2))
+		case 2: w.f.Write2Bytes(byte(v2), byte(v2 >> 8))
+		case 3: w.f.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
+		case 4: w.f.Write4Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24))
+		case 5: w.f.Write5Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32))
+		case 6: w.f.Write6Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40))
+		case 7: w.f.Write7Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48))
+		case 8: w.f.Write8Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 25), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48), byte(v2 >> 56))
+	}
 }
 
 func numbytes(v uint64) uint8 {
@@ -247,39 +201,39 @@ func (w *Writer) WriteFloat64(flt float64) {
 }
 
 func (w *Writer) WriteString8(s string) {
-	tmp := []byte(s)
-	if len(tmp) > 255 {
-		tmp = tmp[0:255]
+	l := len(tmp)
+	w.f.WriteByte(uint8(l))
+	if l > 255 {
+		w.f.WriteString(s[0:255])
+	} else {
+		w.f.WriteString(s)
 	}
-	w.buf8[0] = uint8(len(tmp))
-	w.f.Write(w.buf8)
-	w.f.Write(tmp)
 }
 
 func (w *Writer) WriteString16(s string) {
-	tmp := []byte(s)
-	if len(tmp) > 65535 {
-		tmp = tmp[0:65535]
+	l := len(tmp)
+	w.Write16(uint16(l))
+	if l > 65535 {
+		w.f.WriteString(s[0:65535])
+	} else {
+		w.f.WriteString(s)
 	}
-	w.Write16(uint16(len(tmp)))
-	w.f.Write(tmp)
 }
 
 func (w *Writer) WriteString32(s string) {
-	tmp := []byte(s)
-	if len(tmp) > 4294967295 {
-		tmp = tmp[0:4294967295]
+	l := len(tmp)
+	w.Write32(uint32(l))
+	if l > 4294967295 {
+		w.f.WriteString(s[0:4294967295])
+	} else {
+		w.f.WriteString(s)
 	}
-	w.Write32(uint32(len(tmp)))
-	w.f.Write(tmp)
 }
 
 // 12 bits and 4 bits
 func (w *Writer) Write12(v1, v2 uint16) {
 	v1 |= v2 << 12
-	w.buf16[0] = byte(v1)
-	w.buf16[1] = byte(v1 >> 8)
-	w.f.Write(w.buf16)
+	w.f.Write2Bytes(byte(v1), byte(v1 >> 8))
 }
 
 func (w *Writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
@@ -295,8 +249,7 @@ func (w *Writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
 	if b4 {
 		v1 |= 16
 	}
-	w.buf8[0] = v1
-	w.f.Write(w.buf8)
+	w.f.WriteByte(v1)
 }
 
 func (w *Writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
@@ -305,8 +258,7 @@ func (w *Writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
 	if b1 {
 		v1 |= 128
 	}
-	w.buf8[0] = v1
-	w.f.Write(w.buf8)
+	w.f.WriteByte(v1)
 }
 
 func (r *Reader) ReadBool2() (bool, bool) {
