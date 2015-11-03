@@ -201,7 +201,7 @@ func (w *Writer) WriteFloat64(flt float64) {
 }
 
 func (w *Writer) WriteString8(s string) {
-	l := len(tmp)
+	l := len(s)
 	w.f.WriteByte(uint8(l))
 	if l > 255 {
 		w.f.WriteString(s[0:255])
@@ -211,7 +211,7 @@ func (w *Writer) WriteString8(s string) {
 }
 
 func (w *Writer) WriteString16(s string) {
-	l := len(tmp)
+	l := len(s)
 	w.Write16(uint16(l))
 	if l > 65535 {
 		w.f.WriteString(s[0:65535])
@@ -221,7 +221,7 @@ func (w *Writer) WriteString16(s string) {
 }
 
 func (w *Writer) WriteString32(s string) {
-	l := len(tmp)
+	l := len(s)
 	w.Write32(uint32(l))
 	if l > 4294967295 {
 		w.f.WriteString(s[0:4294967295])
