@@ -16,13 +16,11 @@ type Reader struct {
 }
 
 type Writer struct {
-	z *zlib.Writer
 	f *buffer.Buffer
 }
 
 func (w *Writer) Close() {
-	w.f.Flush()
-	w.z.Close()
+	w.f.Close()
 }
 
 func (r *Reader) Close() {
@@ -52,10 +50,7 @@ func NewReader(f io.Reader, buffersize int) (*Reader, error) {
 }
 
 func NewWriter(f io.Writer) *Writer {
-	w := new(Writer)
-	w.z = zlib.NewWriter(f)
-	w.f = buffer.New(w.z)
-	return w
+	return &Writer{f: buffer.New(zlib.NewWriter(f))}
 }
 
 func NewWriterLevel(f io.Writer, level int) *Writer {
