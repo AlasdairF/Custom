@@ -50,7 +50,7 @@ func NewReader(f io.Reader, buffersize int) (*Reader, error) {
 }
 
 func NewWriter(f io.Writer) *Writer {
-	return &Writer{f: buffer.New(zlib.NewWriter(f))}
+	return &Writer{f: buffer.NewWriter(zlib.NewWriter(f))}
 }
 
 func NewWriterLevel(f io.Writer, level int) *Writer {
