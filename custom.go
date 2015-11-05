@@ -16,7 +16,7 @@ type Reader struct {
 }
 
 type Writer struct {
-	f *buffer.Buffer
+	f *buffer.Writer
 }
 
 func (w *Writer) Close() {
