@@ -55,8 +55,8 @@ func NewWriter(f io.Writer) *Writer {
 
 func NewWriterLevel(f io.Writer, level int) *Writer {
 	w := new(Writer)
-	w.z, _ = zlib.NewWriterLevel(f, level)
-	w.f = buffer.NewWriter(w.z)
+	z, _ := zlib.NewWriterLevel(f, level)
+	w.f = buffer.NewWriter(z)
 	return w
 }
 
