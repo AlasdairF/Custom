@@ -4,6 +4,7 @@ import (
  "github.com/AlasdairF/Buffer"
  "compress/zlib"
  "io"
+ "io/ioutil"
  "math"
  "errors"
 )
