@@ -360,15 +360,10 @@ func (r *Reader) Readx(x int) []byte {
 func (r *Reader) ReadUTF8() []byte {
 	first := r.Read8()
 	if first < 128 { // length 1
-		b := make([]byte, 1)
-		b[0] = first
-		return b
+		return []byte{first}
 	}
 	if first & 32 == 0 { // length 2
-			b := make([]byte, 2)
-			b[0] = first
-			b[1] = r.Read8()
-			return b
+			return []byte{first, r.Read8()}
 	} else {
 		b := make([]byte, 3)
 		b[0] = first
