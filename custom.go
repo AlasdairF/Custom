@@ -15,6 +15,11 @@ type Reader struct {
 	buf []byte	// the buffer for reading data
 }
 
+type BytesReader struct {
+	data []byte
+	cursor int
+}
+
 type Writer struct {
 	f *buffer.Writer
 }
@@ -38,6 +43,13 @@ func (r *Reader) EOF() error {
 	return err
 }
 
+func (r *BytesReader) EOF() error {
+	if r.cursor == len(r.data) {
+		return nil
+	}
+	return errors.New(`Not EOF`)
+}
+
 func NewReader(f io.Reader, buffersize int) (*Reader, error) {
 	r := new(Reader)
 	var err error
@@ -47,6 +59,20 @@ func NewReader(f io.Reader, buffersize int) (*Reader, error) {
 	}
 	r.buf = make([]byte, buffersize)
 	return r, nil
+}
+
+func NewBytesReader(data []byte) (*BytesReader, error) {
+	return &BytesReader{data: data}, nil
+}
+
+func LoadBytes(r io.Reader) ([]byte, error) {
+	z, err := zlib.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
+	defer z.Close()
+	b, err := ioutil.ReadAll(z)
+	return b, err
 }
 
 func NewWriter(f io.Writer) *Writer {
@@ -59,6 +85,8 @@ func NewWriterLevel(f io.Writer, level int) *Writer {
 	w.f = buffer.NewWriter(z)
 	return w
 }
+
+// -------- WRITING --------
 
 func (w *Writer) Write(b []byte) {
 	w.f.Write(b)
@@ -255,6 +283,8 @@ func (w *Writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
 	}
 	w.f.WriteByte(v1)
 }
+
+// -------- READING --------
 
 func (r *Reader) ReadBool2() (bool, bool) {
 	for r.n == 0 {
@@ -625,5 +655,208 @@ func (r *Reader) ReadSpecial2() (uint8, uint8, uint8, bool) {
 	v3 := (c >> 5) & 3
 	r.at++
 	r.n--
+	return v1, v2, v3, b1
+}
+
+// -------- BytesReader READING --------
+
+func (r *BytesReader) ReadBool2() (bool, bool) {
+	var b1, b2 bool
+	switch r.data[r.cursor] {
+		case 1: b1 = true
+		case 2: b2 = true
+		case 3: b1, b2 = true, true
+	}
+	r.cursor++
+	return b1, b2
+}
+
+func (r *BytesReader) ReadBool() bool {
+	var b1 bool
+	if r.data[r.cursor] > 0 {
+		b1 = true
+	}
+	r.cursor++
+	return b1
+}
+
+func (r *BytesReader) Read4() (uint8, uint8) {
+	res1, res2 := r.data[r.cursor] & 15, r.data[r.cursor] >> 4
+	r.cursor++
+	return res1, res2
+}
+
+func (r *BytesReader) Read8() uint8 {
+	r.cursor++
+	return r.data[r.cursor-1]
+}
+
+func (r *BytesReader) Readx(x int) []byte {
+	r.cursor += x
+	return r.data[r.cursor-x:r.cursor]
+}
+
+func (r *BytesReader) ReadUTF8() []byte {
+	if r.data[r.cursor] < 128 { // length 1
+		r.cursor++
+		return r.data[r.cursor-1:r.cursor]
+	}
+	if r.data[r.cursor] & 32 == 0 { // length 2
+		r.cursor += 2
+		return r.data[r.cursor-2:r.cursor]
+	} else {
+		r.cursor += 3
+		return r.data[r.cursor-3:r.cursor]
+	}
+}
+
+func (r *BytesReader) Read16() uint16 {
+	r.cursor += 2
+	return uint16(r.data[r.cursor-2]) | uint16(r.data[r.cursor-1])<<8
+}
+
+// If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
+// This is only useful if it is expected that the value will be <255 more than half the time
+func (r *BytesReader) Read16Variable() uint16 {
+	v := r.Read8()
+	if v < 255 {
+		return uint16(v)
+	}
+	return r.Read16()
+}
+
+func (r *BytesReader) ReadInt16Variable() int16 {
+	v := r.Read8()
+	if v < 255 {
+		return int16(v) - 127
+	}
+	return int16(r.Read16())
+}
+
+func (r *BytesReader) Read24() uint32 {
+	r.cursor += 3
+	return uint32(r.data[r.cursor-3]) | uint32(r.data[r.cursor-2])<<8 | uint32(r.data[r.cursor-1])<<16
+}
+
+func (r *BytesReader) Read32() uint32 {
+	r.cursor += 4
+	return uint32(r.data[r.cursor-4]) | uint32(r.data[r.cursor-3])<<8 | uint32(r.data[r.cursor-2])<<16 | uint32(r.data[r.cursor-1])<<24
+}
+
+func (r *BytesReader) ReadFloat32() float32 {
+	return math.Float32frombits(r.Read32())
+}
+
+func (r *BytesReader) Read48() uint64 {
+	r.cursor += 6
+	return uint64(r.data[r.cursor-6]) | uint64(r.data[r.cursor-5])<<8 | uint64(r.data[r.cursor-4])<<16 | uint64(r.data[r.cursor-3])<<24 | uint64(r.data[r.cursor-2])<<32 | uint64(r.data[r.cursor-1])<<40
+}
+
+func (r *BytesReader) Read64() uint64 {
+	r.cursor += 8
+	return uint64(r.data[r.cursor-8]) | uint64(r.data[r.cursor-7])<<8 | uint64(r.data[r.cursor-6])<<16 | uint64(r.data[r.cursor-5])<<24 | uint64(r.data[r.cursor-4])<<32 | uint64(r.data[r.cursor-3])<<40 | uint64(r.data[r.cursor-2])<<48 | uint64(r.data[r.cursor-1])<<56
+}
+
+// The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
+func (r *BytesReader) Read64Variable() uint64 {
+	s1 := int(r.Read8())
+	var res1 uint64
+	switch s1 {
+		case 1: res1 = uint64(r.data[r.cursor])
+		case 2: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8
+		case 3: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16
+		case 4: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24
+		case 5: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32
+		case 6: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40
+		case 7: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40 | uint64(r.data[r.cursor+6])<<48
+		case 8: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40 | uint64(r.data[r.cursor+6])<<48 | uint64(r.data[r.cursor+7])<<56
+	}
+	r.cursor += s1
+	return res1
+}
+
+// The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
+func (r *BytesReader) Read64Variable2() (uint64, uint64) {
+	s2 := r.Read8()
+	s1 := s2 >> 4
+	s2 &= 15
+	var res1, res2 uint64
+	switch s1 {
+		case 1: res1 = uint64(r.data[r.cursor])
+		case 2: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8
+		case 3: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16
+		case 4: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24
+		case 5: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32
+		case 6: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40
+		case 7: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40 | uint64(r.data[r.cursor+6])<<48
+		case 8: res1 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40 | uint64(r.data[r.cursor+6])<<48 | uint64(r.data[r.cursor+7])<<56
+	}
+	r.cursor += int(s1)
+	switch s2 {
+		case 1: res2 = uint64(r.data[r.cursor])
+		case 2: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8
+		case 3: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16
+		case 4: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24
+		case 5: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32
+		case 6: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40
+		case 7: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40 | uint64(r.data[r.cursor+6])<<48
+		case 8: res2 = uint64(r.data[r.cursor]) | uint64(r.data[r.cursor+1])<<8 | uint64(r.data[r.cursor+2])<<16 | uint64(r.data[r.cursor+3])<<24 | uint64(r.data[r.cursor+4])<<32 | uint64(r.data[r.cursor+5])<<40 | uint64(r.data[r.cursor+6])<<48 | uint64(r.data[r.cursor+7])<<56
+	}
+	r.cursor += int(s2)
+	return res1, res2
+}
+
+func (r *BytesReader) ReadFloat64() float64 {
+	return math.Float64frombits(r.Read64())
+}
+
+func (r *BytesReader) ReadString8() string {
+	return string(r.Readx(int(r.Read8())))
+}
+
+func (r *BytesReader) ReadString16() string {
+	return string(r.Readx(int(r.Read16())))
+}
+
+func (r *BytesReader) ReadString32() string {
+	return string(r.Readx(int(r.Read32())))
+}
+
+// 12 bits for uint16 and 4 bits for uint8
+func (r *BytesReader) Read12() (uint16, uint16) {
+	res := uint16(r.data[r.cursor]) | uint16(r.data[r.cursor+1])<<8
+	r.cursor += 2
+	return res & 4095, res >> 12
+}
+
+func (r *BytesReader) ReadSpecial() (uint8, bool, bool, bool, bool) {
+	c := r.data[r.cursor]
+	var b1, b2, b3, b4 bool
+	if c & 128 > 0 {
+		b1 = true
+	}
+	if c & 64 > 0 {
+		b2 = true
+	}
+	if c & 32 > 0 {
+		b3 = true
+	}
+	if c & 16 > 0 {
+		b4 = true
+	}
+	r.cursor++
+	return c & 7, b1, b2, b3, b4
+}
+
+func (r *BytesReader) ReadSpecial2() (uint8, uint8, uint8, bool) {
+	c := r.data[r.cursor]
+	var b1 bool
+	if c & 128 > 0 {
+		b1 = true
+	}
+	v1 := c & 7
+	v2 := (c >> 3) & 3
+	v3 := (c >> 5) & 3
+	r.cursor++
 	return v1, v2, v3, b1
 }
