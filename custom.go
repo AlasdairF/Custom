@@ -345,7 +345,7 @@ func (w *Writer) Write2Bools(v1, v2 bool) {
 	w.WriteByte(b)
 }
 
-func (w *Writer) Write2Unit4s(v1, v2 uint8) {
+func (w *Writer) Write2Uint4s(v1, v2 uint8) {
 	v1 |= v2 << 4
 	w.WriteByte(v1)
 }
@@ -760,7 +760,7 @@ func (w *Buffer) Write2Bools(v1, v2 bool) {
 	w.WriteByte(b)
 }
 
-func (w *Buffer) Write2Unit4s(v1, v2 uint8) {
+func (w *Buffer) Write2Uint4s(v1, v2 uint8) {
 	v1 |= v2 << 4
 	w.WriteByte(v1)
 }
@@ -1032,7 +1032,7 @@ func (r *Reader) Read2Bools() (bool, bool) {
 	return b1, b2
 }
 
-func (r *Reader) Read2Unit4s() (uint8, uint8) {
+func (r *Reader) Read2Uint4s() (uint8, uint8) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -1427,7 +1427,7 @@ func (r *BytesReader) Read2Bools() (bool, bool) {
 	return b1, b2
 }
 
-func (r *BytesReader) Read2Unit4s() (uint8, uint8) {
+func (r *BytesReader) Read2Uint4s() (uint8, uint8) {
 	res1, res2 := r.data[r.cursor] & 15, r.data[r.cursor] >> 4
 	r.cursor++
 	return res1, res2
