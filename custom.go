@@ -1635,22 +1635,22 @@ func (r *BytesReader) ReadSpecial2() (uint8, uint8, uint8, bool) {
 	return v1, v2, v3, b1
 }
 
-func (b *BytesReader) Seek(offset int64, whence int) (int64, error) {
+func (r *BytesReader) Seek(offset int64, whence int) (int64, error) {
 	var abs int64
 	switch whence {
 		case 0:
 			abs = offset
 		case 1:
-			abs = int64(w.cursor) + offset
+			abs = int64(r.cursor) + offset
 		case 2:
-			abs = int64(w.length) + offset
+			abs = int64(r.length) + offset
 		default:
 			return 0, errors.New("buffer.BytesReader.Seek: invalid whence")
 	}
 	if abs < 0 {
 		return 0, errors.New("buffer.BytesReader.Seek: negative position")
 	}
-	w.cursor = int(abs)
+	r.cursor = int(abs)
 	return abs, nil
 }
 
