@@ -1067,6 +1067,21 @@ func (r *Reader) Readx(x int) []byte {
 	return tmp
 }
 
+func (r *Reader) ReadByte() uint8 {
+	for r.n == 0 {
+		r.at = 0
+		m, err := r.f.Read(r.buf)
+		if err != nil {
+			panic(err)
+		}
+		r.n = m
+	}
+	res := r.buf[r.at]
+	r.at++
+	r.n--
+	return res
+}
+
 func (r *Reader) ReadBool() (b1 bool) {
 	for r.n == 0 {
 		r.at = 0
@@ -1155,21 +1170,6 @@ func (r *Reader) Read2Uint4s() (uint8, uint8) {
 	r.at++
 	r.n--
 	return res1, res2
-}
-
-func (r *Reader) ReadByte() uint8 {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
-	}
-	res := r.buf[r.at]
-	r.at++
-	r.n--
-	return res
 }
 
 func (r *Reader) ReadUTF8() []byte {
@@ -1517,6 +1517,11 @@ func (r *BytesReader) Readx(x int) []byte {
 	return r.data[r.cursor-x:r.cursor]
 }
 
+func (r *BytesReader) ReadByte() uint8 {
+	r.cursor++
+	return r.data[r.cursor-1]
+}
+
 func (r *BytesReader) ReadBool() (b1 bool) {
 	if r.data[r.cursor] > 0 {
 		b1 = true
@@ -1569,11 +1574,6 @@ func (r *BytesReader) Read2Uint4s() (uint8, uint8) {
 	res1, res2 := r.data[r.cursor] & 15, r.data[r.cursor] >> 4
 	r.cursor++
 	return res1, res2
-}
-
-func (r *BytesReader) ReadByte() uint8 {
-	r.cursor++
-	return r.data[r.cursor-1]
 }
 
 func (r *BytesReader) ReadUTF8() []byte {
