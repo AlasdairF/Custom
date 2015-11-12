@@ -387,16 +387,14 @@ func (w *Writer) WriteUint16(v uint16) error {
 // This is only useful if it is expected that the value will be <255 more than half the time
 func (w *Writer) WriteUint16Variable(v uint16) error {
 	if v < 255 {
-		w.WriteByte(byte(v))
-		return
+		return w.WriteByte(byte(v))
 	}
 	return w.Write3Bytes(255, byte(v), byte(v >> 8))
 }
 
 func (w *Writer) WriteInt16Variable(v int16) error {
 	if v > -128 && v < 128 {
-		w.WriteByte(byte(v + 127))
-		return
+		return w.WriteByte(byte(v + 127))
 	}
 	v2 := uint16(v)
 	return w.Write3Bytes(255, byte(v2), byte(v2 >> 8))
