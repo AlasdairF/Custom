@@ -326,15 +326,15 @@ func (w *Writer) Write9Bytes(p1, p2, p3, p4, p5, p6, p7, p8, p9 byte) error {
 	return err
 }
 
-func (w *Writer) WriteBool(v bool) {
+func (w *Writer) WriteBool(v bool) error {
 	if v {
-		w.WriteByte(1)
+		return w.WriteByte(1)
 	} else {
-		w.WriteByte(0)
+		return w.WriteByte(0)
 	}
 }
 
-func (w *Writer) Write2Bools(v1, v2 bool) {
+func (w *Writer) Write2Bools(v1, v2 bool) error {
 	var b byte
 	if v1 {
 		b = 1
@@ -342,10 +342,10 @@ func (w *Writer) Write2Bools(v1, v2 bool) {
 	if v2 {
 		b |= 2
 	}
-	w.WriteByte(b)
+	return w.WriteByte(b)
 }
 
-func (w *Writer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) {
+func (w *Writer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) error {
 	var b byte
 	if v1 {
 		b = 1
@@ -371,70 +371,71 @@ func (w *Writer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) {
 	if v8 {
 		b |= 128
 	}
-	w.WriteByte(b)
+	return w.WriteByte(b)
 }
 
-func (w *Writer) Write2Uint4s(v1, v2 uint8) {
+func (w *Writer) Write2Uint4s(v1, v2 uint8) error {
 	v1 |= v2 << 4
-	w.WriteByte(v1)
+	return w.WriteByte(v1)
 }
 
-func (w *Writer) WriteUint16(v uint16) {
-	w.Write2Bytes(byte(v), byte(v >> 8))
+func (w *Writer) WriteUint16(v uint16) error {
+	return w.Write2Bytes(byte(v), byte(v >> 8))
 }
 
 // If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
 // This is only useful if it is expected that the value will be <255 more than half the time
-func (w *Writer) WriteUint16Variable(v uint16) {
+func (w *Writer) WriteUint16Variable(v uint16) error {
 	if v < 255 {
 		w.WriteByte(byte(v))
 		return
 	}
-	w.Write3Bytes(255, byte(v), byte(v >> 8))
+	return w.Write3Bytes(255, byte(v), byte(v >> 8))
 }
 
-func (w *Writer) WriteInt16Variable(v int16) {
+func (w *Writer) WriteInt16Variable(v int16) error {
 	if v > -128 && v < 128 {
 		w.WriteByte(byte(v + 127))
 		return
 	}
 	v2 := uint16(v)
-	w.Write3Bytes(255, byte(v2), byte(v2 >> 8))
+	return w.Write3Bytes(255, byte(v2), byte(v2 >> 8))
 }
 
-func (w *Writer) WriteUint24(v uint32) {
-	w.Write3Bytes(byte(v), byte(v >> 8), byte(v >> 16))
+func (w *Writer) WriteUint24(v uint32) error {
+	return w.Write3Bytes(byte(v), byte(v >> 8), byte(v >> 16))
 }
 
-func (w *Writer) WriteUint32(v uint32) {
-	w.Write4Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+func (w *Writer) WriteUint32(v uint32) error {
+	return w.Write4Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
 }
 
-func (w *Writer) WriteUint48(v uint64) {
-	w.Write6Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
+func (w *Writer) WriteUint48(v uint64) error {
+	return w.Write6Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
 }
 
-func (w *Writer) WriteUint64(v uint64) {
-	w.Write8Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
+func (w *Writer) WriteUint64(v uint64) error {
+	return w.Write8Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (w *Writer) WriteUint64Variable(v uint64) {
+func (w *Writer) WriteUint64Variable(v uint64) error {
 	switch numbytes(v) {
-		case 0: w.WriteByte(0)
-		case 1: w.Write2Bytes(1, byte(v))
-		case 2: w.Write3Bytes(2, byte(v), byte(v >> 8))
-		case 3: w.Write4Bytes(3, byte(v), byte(v >> 8), byte(v >> 16))
-		case 4: w.Write5Bytes(4, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
-		case 5: w.Write6Bytes(5, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32))
-		case 6: w.Write7Bytes(6, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
-		case 7: w.Write8Bytes(7, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48))
-		case 8: w.Write9Bytes(8, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 25), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
+		case 0: return w.WriteByte(0)
+		case 1: return w.Write2Bytes(1, byte(v))
+		case 2: return w.Write3Bytes(2, byte(v), byte(v >> 8))
+		case 3: return w.Write4Bytes(3, byte(v), byte(v >> 8), byte(v >> 16))
+		case 4: return w.Write5Bytes(4, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+		case 5: return w.Write6Bytes(5, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32))
+		case 6: return w.Write7Bytes(6, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
+		case 7: return w.Write8Bytes(7, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48))
+		case 8: return w.Write9Bytes(8, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 25), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
 	}
+	return nil
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (w *Writer) Write2Uint64sVariable(v1 uint64, v2 uint64) {
+func (w *Writer) Write2Uint64sVariable(v1 uint64, v2 uint64) error {
 	s1 := numbytes(v1)
 	s2 := numbytes(v2)
 	w.WriteByte((s1 << 4) | s2)
@@ -449,53 +450,60 @@ func (w *Writer) Write2Uint64sVariable(v1 uint64, v2 uint64) {
 		case 8: w.Write8Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
 	}
 	switch s2 {
-		case 1: w.WriteByte(byte(v2))
-		case 2: w.Write2Bytes(byte(v2), byte(v2 >> 8))
-		case 3: w.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
-		case 4: w.Write4Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24))
-		case 5: w.Write5Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32))
-		case 6: w.Write6Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40))
-		case 7: w.Write7Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48))
-		case 8: w.Write8Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 25), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48), byte(v2 >> 56))
+		case 1: return w.WriteByte(byte(v2))
+		case 2: return w.Write2Bytes(byte(v2), byte(v2 >> 8))
+		case 3: return w.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
+		case 4: return w.Write4Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24))
+		case 5: return w.Write5Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32))
+		case 6: return w.Write6Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40))
+		case 7: return w.Write7Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48))
+		case 8: return w.Write8Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 25), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48), byte(v2 >> 56))
 	}
+	return nil
 }
 
-func (w *Writer) WriteFloat32(flt float32) {
-	w.WriteUint32(math.Float32bits(flt))
+func (w *Writer) WriteFloat32(flt float32) error {
+	return w.WriteUint32(math.Float32bits(flt))
 }
 
-func (w *Writer) WriteFloat64(flt float64) {
-	w.WriteUint64(math.Float64bits(flt))
+func (w *Writer) WriteFloat64(flt float64) error {
+	return w.WriteUint64(math.Float64bits(flt))
 }
 
-func (w *Writer) WriteString8(s string) {
-	l := len(s)
-	w.WriteByte(uint8(l))
-	if l > 255 {
-		w.WriteString(s[0:255])
+func (w *Writer) WriteString8(s string) (n int, err error) {
+	n = len(s)
+	w.WriteByte(uint8(n))
+	if n > 255 {
+		n, err = w.WriteString(s[0:255])
 	} else {
-		w.WriteString(s)
+		n, err = w.WriteString(s)
 	}
+	n++
+	return
 }
 
-func (w *Writer) WriteString16(s string) {
-	l := len(s)
-	w.WriteUint16(uint16(l))
-	if l > 65535 {
-		w.WriteString(s[0:65535])
+func (w *Writer) WriteString16(s string) (n int, err error) {
+	n = len(s)
+	w.WriteUint16(uint16(n))
+	if n > 65535 {
+		n, err = w.WriteString(s[0:65535])
 	} else {
-		w.WriteString(s)
+		n, err = w.WriteString(s)
 	}
+	n++
+	return
 }
 
-func (w *Writer) WriteString32(s string) {
-	l := len(s)
-	w.WriteUint32(uint32(l))
-	if l > 4294967295 {
-		w.WriteString(s[0:4294967295])
+func (w *Writer) WriteString32(s string) (n int, err error) {
+	n = len(s)
+	w.WriteUint32(uint32(n))
+	if n > 4294967295 {
+		n, err = w.WriteString(s[0:4294967295])
 	} else {
-		w.WriteString(s)
+		n, err = w.WriteString(s)
 	}
+	n++
+	return
 }
 
 /*
@@ -506,7 +514,7 @@ func (w *Writer) Write12And4(v1, v2 uint16) {
 }
 */
 
-func (w *Writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
+func (w *Writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) error {
 	if b1 {
 		v1 |= 128
 	}
@@ -519,16 +527,16 @@ func (w *Writer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
 	if b4 {
 		v1 |= 16
 	}
-	w.WriteByte(v1)
+	return w.WriteByte(v1)
 }
 
-func (w *Writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
+func (w *Writer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) error {
 	v1 |= v2 << 3
 	v1 |= v3 << 5
 	if b1 {
 		v1 |= 128
 	}
-	w.WriteByte(v1)
+	return w.WriteByte(v1)
 }
 
 func (w *Writer) Close() (err error) {
@@ -770,15 +778,15 @@ func (w *Buffer) Write9Bytes(p1, p2, p3, p4, p5, p6, p7, p8, p9 byte) error {
 	return nil
 }
 
-func (w *Buffer) WriteBool(v bool) {
+func (w *Buffer) WriteBool(v bool) error {
 	if v {
-		w.WriteByte(1)
+		return w.WriteByte(1)
 	} else {
-		w.WriteByte(0)
+		return w.WriteByte(0)
 	}
 }
 
-func (w *Buffer) Write2Bools(v1, v2 bool) {
+func (w *Buffer) Write2Bools(v1, v2 bool) error {
 	var b byte
 	if v1 {
 		b = 1
@@ -786,10 +794,10 @@ func (w *Buffer) Write2Bools(v1, v2 bool) {
 	if v2 {
 		b |= 2
 	}
-	w.WriteByte(b)
+	return w.WriteByte(b)
 }
 
-func (w *Buffer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) {
+func (w *Buffer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) error {
 	var b byte
 	if v1 {
 		b = 1
@@ -815,70 +823,69 @@ func (w *Buffer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) {
 	if v8 {
 		b |= 128
 	}
-	w.WriteByte(b)
+	return w.WriteByte(b)
 }
 
-func (w *Buffer) Write2Uint4s(v1, v2 uint8) {
+func (w *Buffer) Write2Uint4s(v1, v2 uint8) error {
 	v1 |= v2 << 4
-	w.WriteByte(v1)
+	return w.WriteByte(v1)
 }
 
-func (w *Buffer) WriteUint16(v uint16) {
-	w.Write2Bytes(byte(v), byte(v >> 8))
+func (w *Buffer) WriteUint16(v uint16) error {
+	return w.Write2Bytes(byte(v), byte(v >> 8))
 }
 
 // If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
 // This is only useful if it is expected that the value will be <255 more than half the time
-func (w *Buffer) WriteUint16Variable(v uint16) {
+func (w *Buffer) WriteUint16Variable(v uint16) error {
 	if v < 255 {
-		w.WriteByte(byte(v))
-		return
+		return w.WriteByte(byte(v))
 	}
-	w.Write3Bytes(255, byte(v), byte(v >> 8))
+	return w.Write3Bytes(255, byte(v), byte(v >> 8))
 }
 
-func (w *Buffer) WriteInt16Variable(v int16) {
+func (w *Buffer) WriteInt16Variable(v int16) error {
 	if v > -128 && v < 128 {
-		w.WriteByte(byte(v + 127))
-		return
+		return w.WriteByte(byte(v + 127))
 	}
 	v2 := uint16(v)
-	w.Write3Bytes(255, byte(v2), byte(v2 >> 8))
+	return w.Write3Bytes(255, byte(v2), byte(v2 >> 8))
 }
 
-func (w *Buffer) WriteUint24(v uint32) {
-	w.Write3Bytes(byte(v), byte(v >> 8), byte(v >> 16))
+func (w *Buffer) WriteUint24(v uint32) error {
+	return w.Write3Bytes(byte(v), byte(v >> 8), byte(v >> 16))
 }
 
-func (w *Buffer) WriteUint32(v uint32) {
-	w.Write4Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+func (w *Buffer) WriteUint32(v uint32) error {
+	return w.Write4Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
 }
 
-func (w *Buffer) WriteUint48(v uint64) {
-	w.Write6Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
+func (w *Buffer) WriteUint48(v uint64) error {
+	return w.Write6Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
 }
 
-func (w *Buffer) WriteUint64(v uint64) {
-	w.Write8Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
+func (w *Buffer) WriteUint64(v uint64) error {
+	return w.Write8Bytes(byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (w *Buffer) WriteUint64Variable(v uint64) {
+func (w *Buffer) WriteUint64Variable(v uint64) error {
 	switch numbytes(v) {
-		case 0: w.WriteByte(0)
-		case 1: w.Write2Bytes(1, byte(v))
-		case 2: w.Write3Bytes(2, byte(v), byte(v >> 8))
-		case 3: w.Write4Bytes(3, byte(v), byte(v >> 8), byte(v >> 16))
-		case 4: w.Write5Bytes(4, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
-		case 5: w.Write6Bytes(5, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32))
-		case 6: w.Write7Bytes(6, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
-		case 7: w.Write8Bytes(7, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48))
-		case 8: w.Write9Bytes(8, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 25), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
+		case 0: return w.WriteByte(0)
+		case 1: return w.Write2Bytes(1, byte(v))
+		case 2: return w.Write3Bytes(2, byte(v), byte(v >> 8))
+		case 3: return w.Write4Bytes(3, byte(v), byte(v >> 8), byte(v >> 16))
+		case 4: return w.Write5Bytes(4, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24))
+		case 5: return w.Write6Bytes(5, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32))
+		case 6: return w.Write7Bytes(6, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40))
+		case 7: return w.Write8Bytes(7, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48))
+		case 8: return w.Write9Bytes(8, byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 25), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56))
 	}
+	return nil
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
-func (w *Buffer) Write2Uint64sVariable(v1 uint64, v2 uint64) {
+func (w *Buffer) Write2Uint64sVariable(v1 uint64, v2 uint64) error {
 	s1 := numbytes(v1)
 	s2 := numbytes(v2)
 	w.WriteByte((s1 << 4) | s2)
@@ -893,53 +900,60 @@ func (w *Buffer) Write2Uint64sVariable(v1 uint64, v2 uint64) {
 		case 8: w.Write8Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
 	}
 	switch s2 {
-		case 1: w.WriteByte(byte(v2))
-		case 2: w.Write2Bytes(byte(v2), byte(v2 >> 8))
-		case 3: w.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
-		case 4: w.Write4Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24))
-		case 5: w.Write5Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32))
-		case 6: w.Write6Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40))
-		case 7: w.Write7Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48))
-		case 8: w.Write8Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 25), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48), byte(v2 >> 56))
+		case 1: return w.WriteByte(byte(v2))
+		case 2: return w.Write2Bytes(byte(v2), byte(v2 >> 8))
+		case 3: return w.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
+		case 4: return w.Write4Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24))
+		case 5: return w.Write5Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32))
+		case 6: return w.Write6Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40))
+		case 7: return w.Write7Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 24), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48))
+		case 8: return w.Write8Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16), byte(v2 >> 25), byte(v2 >> 32), byte(v2 >> 40), byte(v2 >> 48), byte(v2 >> 56))
 	}
+	return nil
 }
 
-func (w *Buffer) WriteFloat32(flt float32) {
-	w.WriteUint32(math.Float32bits(flt))
+func (w *Buffer) WriteFloat32(flt float32) error {
+	return w.WriteUint32(math.Float32bits(flt))
 }
 
-func (w *Buffer) WriteFloat64(flt float64) {
-	w.WriteUint64(math.Float64bits(flt))
+func (w *Buffer) WriteFloat64(flt float64) error {
+	return w.WriteUint64(math.Float64bits(flt))
 }
 
-func (w *Buffer) WriteString8(s string) {
-	l := len(s)
-	w.WriteByte(uint8(l))
-	if l > 255 {
-		w.WriteString(s[0:255])
+func (w *Buffer) WriteString8(s string) (n int, err error) {
+	n = len(s)
+	w.WriteByte(uint8(n))
+	if n > 255 {
+		n, err = w.WriteString(s[0:255])
 	} else {
-		w.WriteString(s)
+		n, err = w.WriteString(s)
 	}
+	n++
+	return
 }
 
-func (w *Buffer) WriteString16(s string) {
-	l := len(s)
-	w.WriteUint16(uint16(l))
-	if l > 65535 {
-		w.WriteString(s[0:65535])
+func (w *Buffer) WriteString16(s string) (n int, err error) {
+	n = len(s)
+	w.WriteUint16(uint16(n))
+	if n > 65535 {
+		n, err = w.WriteString(s[0:65535])
 	} else {
-		w.WriteString(s)
+		n, err = w.WriteString(s)
 	}
+	n++
+	return
 }
 
-func (w *Buffer) WriteString32(s string) {
-	l := len(s)
-	w.WriteUint32(uint32(l))
-	if l > 4294967295 {
-		w.WriteString(s[0:4294967295])
+func (w *Buffer) WriteString32(s string) (n int, err error) {
+	n = len(s)
+	w.WriteUint32(uint32(n))
+	if n > 4294967295 {
+		n, err = w.WriteString(s[0:4294967295])
 	} else {
-		w.WriteString(s)
+		n, err = w.WriteString(s)
 	}
+	n++
+	return
 }
 
 /*
@@ -950,7 +964,7 @@ func (w *Buffer) Write12And4(v1, v2 uint16) {
 }
 */
 
-func (w *Buffer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
+func (w *Buffer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) error {
 	if b1 {
 		v1 |= 128
 	}
@@ -963,16 +977,16 @@ func (w *Buffer) WriteSpecial(v1 uint8, b1, b2, b3, b4 bool) {
 	if b4 {
 		v1 |= 16
 	}
-	w.WriteByte(v1)
+	return w.WriteByte(v1)
 }
 
-func (w *Buffer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) {
+func (w *Buffer) WriteSpecial2(v1, v2, v3 uint8, b1 bool) error {
 	v1 |= v2 << 3
 	v1 |= v3 << 5
 	if b1 {
 		v1 |= 128
 	}
-	w.WriteByte(v1)
+	return w.WriteByte(v1)
 }
 
 func (w *Buffer) Reset() {
@@ -1019,20 +1033,21 @@ func NewReader(f io.Reader, bufsize int) *Reader {
 	return &Reader{f: f, buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
 }
 
-func (r *Reader) Read(b []byte) {
+func (r *Reader) Read(b []byte) (int, error) {
 	x := len(b)
 	for r.n < x {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
 		m, err := r.f.Read(r.buf[r.n:])
 		if err != nil {
-			panic(err)
+			return x, err
 		}
 		r.n += m
 	}
 	copy(b, r.buf[r.at:r.at+x]) // must be copied to avoid memory leak
 	r.at += x
 	r.n -= x
+	return x, nil
 }
 
 func (r *Reader) Readx(x int) []byte {
