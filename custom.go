@@ -5,6 +5,8 @@ import (
  "math"
  "io"
  "errors"
+ "compress/zlib"
+ "github.com/golang/snappy"
 )
 
 const (
@@ -49,6 +51,14 @@ type Writer struct {
 
 func NewWriter(f io.Writer) *Writer {
 	return &Writer{w: f}
+}
+
+func NewZlibWriter(f io.Writer) *Writer {
+	return &Writer{w: zlib.NewWriter(f)}
+}
+
+func NewSnappyWriter(f io.Writer) *Writer {
+	return &Writer{w: snappy.NewWriter(f)}
 }
 
 func (w *Writer) Write(p []byte) (int, error) {
@@ -1028,6 +1038,18 @@ type Reader struct {
 
 func NewReader(f io.Reader, bufsize int) *Reader {
 	return &Reader{f: f, buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
+}
+
+func NewZlibReader(f io.Reader, bufsize int) *Reader {
+	z, err := zlib.NewReader(f)
+	if err != nil {
+		panic(err)
+	}
+	return &Reader{f: z, buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
+}
+
+func NewSnappyReader(f io.Reader, bufsize int) *Reader {
+	return &Reader{f: snappy.NewReader(f), buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
 }
 
 func (r *Reader) Read(b []byte) (int, error) {
