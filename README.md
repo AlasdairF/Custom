@@ -122,4 +122,11 @@ Basically the same but the other way around, e.g.
 	 }
 	 r.Close()
 
-     
+Or if you already have the data to read in a slice of bytes (i.e. if it's already in memory):
+
+	 r := custom.NewBytesReader(theSliceOfBytes)
+	 val := r.Read64Variable()
+	 str := r.ReadString16()
+	 if err := r.EOF(); err != nil {
+		panic(`This should be the end but it's not! Oh no!`)
+	 }
