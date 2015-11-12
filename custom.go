@@ -1,7 +1,6 @@
 package custom
 
 import (
- "github.com/AlasdairF/Unleak"
  "unicode/utf8"
  "math"
  "io"
@@ -1577,14 +1576,14 @@ func (r *BytesReader) Read2Uint4s() (uint8, uint8) {
 func (r *BytesReader) ReadUTF8() []byte {
 	if r.data[r.cursor] < 128 { // length 1
 		r.cursor++
-		return unleak.Bytes(r.data[r.cursor-1:r.cursor])
+		return []byte{r.data[r.cursor-1]}
 	}
 	if r.data[r.cursor] & 32 == 0 { // length 2
 		r.cursor += 2
-		return unleak.Bytes(r.data[r.cursor-2:r.cursor])
+		return []byte{r.data[r.cursor-2], r.data[r.cursor-1]}
 	} else {
 		r.cursor += 3
-		return unleak.Bytes(r.data[r.cursor-3:r.cursor])
+		return []byte{r.data[r.cursor-3], r.data[r.cursor-2], r.data[r.cursor-1]}
 	}
 }
 
