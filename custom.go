@@ -48,8 +48,8 @@ type Writer struct {
 	cursor int
 }
 
-func NewWriter(w io.Writer) *Writer {
-	return &Writer{w: w}
+func NewWriter(f io.Writer) *Writer {
+	return &Writer{w: f}
 }
 
 func (w *Writer) Write(p []byte) (int, error) {
@@ -514,7 +514,7 @@ func (w *Writer) Close() (err error) {
 			sw.Close()
 		}
 	}
-	b.w = nil
+	w.w = nil
 	return
 }
 
@@ -526,9 +526,9 @@ func (w *Writer) Flush() (err error) {
 	return
 }
 
-func (w *Writer) Recycle(w io.Writer) (err error) {
+func (w *Writer) Recycle(f io.Writer) (err error) {
 	w.cursor = 0
-	b.w = w
+	w.w = f
 	return
 }
 
@@ -1395,12 +1395,9 @@ func NewBytesReader(p []byte) *BytesReader {
 	return &BytesReader{data: p, length: len(p)}
 }
 
-func (b *BytesReader) Read(p []byte) (int, error) {
-	if w.cursor >= w.length {
-		return 0, io.EOF
-	}
-	n := copy(p, w.data[w.cursor:])
-	w.cursor += n
+func (r *BytesReader) Read(p []byte) (int, error) {
+	n := copy(p, r.data[r.cursor:r.cursor+len(p)])
+	r.cursor += n
 	return n, nil
 }
 
