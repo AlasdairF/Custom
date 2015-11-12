@@ -345,6 +345,35 @@ func (w *Writer) Write2Bools(v1, v2 bool) {
 	w.WriteByte(b)
 }
 
+func (w *Writer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) {
+	var b byte
+	if v1 {
+		b = 1
+	}
+	if v2 {
+		b |= 2
+	}
+	if v3 {
+		b |= 4
+	}
+	if v4 {
+		b |= 8
+	}
+	if v5 {
+		b |= 16
+	}
+	if v6 {
+		b |= 32
+	}
+	if v7 {
+		b |= 64
+	}
+	if v8 {
+		b |= 128
+	}
+	w.WriteByte(b)
+}
+
 func (w *Writer) Write2Uint4s(v1, v2 uint8) {
 	v1 |= v2 << 4
 	w.WriteByte(v1)
@@ -760,6 +789,35 @@ func (w *Buffer) Write2Bools(v1, v2 bool) {
 	w.WriteByte(b)
 }
 
+func (w *Buffer) Write8Bools(v1, v2, v3, v4, v5, v6, v7, v8 bool) {
+	var b byte
+	if v1 {
+		b = 1
+	}
+	if v2 {
+		b |= 2
+	}
+	if v3 {
+		b |= 4
+	}
+	if v4 {
+		b |= 8
+	}
+	if v5 {
+		b |= 16
+	}
+	if v6 {
+		b |= 32
+	}
+	if v7 {
+		b |= 64
+	}
+	if v8 {
+		b |= 128
+	}
+	w.WriteByte(b)
+}
+
 func (w *Buffer) Write2Uint4s(v1, v2 uint8) {
 	v1 |= v2 << 4
 	w.WriteByte(v1)
@@ -994,7 +1052,7 @@ func (r *Reader) Readx(x int) []byte {
 	return tmp
 }
 
-func (r *Reader) ReadBool() bool {
+func (r *Reader) ReadBool() (b1 bool) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -1003,16 +1061,15 @@ func (r *Reader) ReadBool() bool {
 		}
 		r.n = m
 	}
-	var b1 bool
 	if r.buf[r.at] > 0 {
 		b1 = true
 	}
 	r.at++
 	r.n--
-	return b1
+	return
 }
 
-func (r *Reader) Read2Bools() (bool, bool) {
+func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
 	for r.n == 0 {
 		r.at = 0
 		m, err := r.f.Read(r.buf)
@@ -1021,7 +1078,6 @@ func (r *Reader) Read2Bools() (bool, bool) {
 		}
 		r.n = m
 	}
-	var b1, b2 bool
 	switch r.buf[r.at] {
 		case 1: b1 = true
 		case 2: b2 = true
@@ -1029,7 +1085,46 @@ func (r *Reader) Read2Bools() (bool, bool) {
 	}
 	r.at++
 	r.n--
-	return b1, b2
+	return
+}
+
+func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 bool, b7 bool, b8 bool) {
+	for r.n == 0 {
+		r.at = 0
+		m, err := r.f.Read(r.buf)
+		if err != nil {
+			panic(err)
+		}
+		r.n = m
+	}
+	c := r.buf[r.at]
+	if c & 1 > 0 {
+		b1 = true
+	}
+	if c & 2 > 0 {
+		b2 = true
+	}
+	if c & 4 > 0 {
+		b3 = true
+	}
+	if c & 8 > 0 {
+		b4 = true
+	}
+	if c & 16 > 0 {
+		b5 = true
+	}
+	if c & 32 > 0 {
+		b6 = true
+	}
+	if c & 64 > 0 {
+		b7 = true
+	}
+	if c & 128 > 0 {
+		b8 = true
+	}
+	r.at++
+	r.n--
+	return
 }
 
 func (r *Reader) Read2Uint4s() (uint8, uint8) {
@@ -1407,24 +1502,52 @@ func (r *BytesReader) Readx(x int) []byte {
 	return r.data[r.cursor-x:r.cursor]
 }
 
-func (r *BytesReader) ReadBool() bool {
-	var b1 bool
+func (r *BytesReader) ReadBool() (b1 bool) {
 	if r.data[r.cursor] > 0 {
 		b1 = true
 	}
 	r.cursor++
-	return b1
+	return
 }
 
-func (r *BytesReader) Read2Bools() (bool, bool) {
-	var b1, b2 bool
+func (r *BytesReader) Read2Bools() (b1 bool, b2 bool) {
 	switch r.data[r.cursor] {
 		case 1: b1 = true
 		case 2: b2 = true
 		case 3: b1, b2 = true, true
 	}
 	r.cursor++
-	return b1, b2
+	return
+}
+
+func (r *BytesReader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 bool, b7 bool, b8 bool) {
+	c := r.data[r.cursor]
+	if c & 1 > 0 {
+		b1 = true
+	}
+	if c & 2 > 0 {
+		b2 = true
+	}
+	if c & 4 > 0 {
+		b3 = true
+	}
+	if c & 8 > 0 {
+		b4 = true
+	}
+	if c & 16 > 0 {
+		b5 = true
+	}
+	if c & 32 > 0 {
+		b6 = true
+	}
+	if c & 64 > 0 {
+		b7 = true
+	}
+	if c & 128 > 0 {
+		b8 = true
+	}
+	r.cursor++
+	return
 }
 
 func (r *BytesReader) Read2Uint4s() (uint8, uint8) {
