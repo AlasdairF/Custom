@@ -1086,6 +1086,19 @@ func (r *Reader) Readx(x int) []byte {
 	return tmp
 }
 
+func (r *Reader) ReadxSlice(x int) []byte {
+	for r.n < x {
+		copy(r.buf, r.buf[r.at:r.at+r.n])
+		r.at = 0
+		m, err := r.f.Read(r.buf[r.n:])
+		if err != nil {
+			panic(err)
+		}
+		r.n += m
+	}
+	return r.buf[r.at-x:r.at]
+}
+
 func (r *Reader) ReadByte() uint8 {
 	for r.n == 0 {
 		r.at = 0
@@ -1095,10 +1108,9 @@ func (r *Reader) ReadByte() uint8 {
 		}
 		r.n = m
 	}
-	res := r.buf[r.at]
 	r.at++
 	r.n--
-	return res
+	return r.buf[r.at-1]
 }
 
 func (r *Reader) ReadBool() (b1 bool) {
@@ -1235,10 +1247,9 @@ func (r *Reader) ReadUint16() uint16 {
 		}
 		r.n += m
 	}
-	res := uint16(r.buf[r.at]) | uint16(r.buf[r.at+1])<<8
 	r.at += 2
 	r.n -= 2
-	return res
+	return uint16(r.buf[r.at-2]) | uint16(r.buf[r.at-1])<<8
 }
 
 // If it's less than 255 then it's encoded in the 1st byte, otherwise 1st byte is 255 and it's encoded in two more bytes
@@ -1269,10 +1280,9 @@ func (r *Reader) ReadUint24() uint32 {
 		}
 		r.n += m
 	}
-	res := uint32(r.buf[r.at]) | uint32(r.buf[r.at+1])<<8 | uint32(r.buf[r.at+2])<<16
 	r.at += 3
 	r.n -= 3
-	return res
+	return uint32(r.buf[r.at-3]) | uint32(r.buf[r.at-2])<<8 | uint32(r.buf[r.at-1])<<16
 }
 
 func (r *Reader) ReadUint32() uint32 {
@@ -1285,10 +1295,9 @@ func (r *Reader) ReadUint32() uint32 {
 		}
 		r.n += m
 	}
-	res := uint32(r.buf[r.at]) | uint32(r.buf[r.at+1])<<8 | uint32(r.buf[r.at+2])<<16 | uint32(r.buf[r.at+3])<<24
 	r.at += 4
 	r.n -= 4
-	return res
+	return uint32(r.buf[r.at-4]) | uint32(r.buf[r.at-3])<<8 | uint32(r.buf[r.at-2])<<16 | uint32(r.buf[r.at-1])<<24
 }
 
 func (r *Reader) ReadUint48() uint64 {
@@ -1301,10 +1310,9 @@ func (r *Reader) ReadUint48() uint64 {
 		}
 		r.n += m
 	}
-	res := uint64(r.buf[r.at]) | uint64(r.buf[r.at+1])<<8 | uint64(r.buf[r.at+2])<<16 | uint64(r.buf[r.at+3])<<24 | uint64(r.buf[r.at+4])<<32 | uint64(r.buf[r.at+5])<<40
 	r.at += 6
 	r.n -= 6
-	return res
+	return uint64(r.buf[r.at-6]) | uint64(r.buf[r.at-5])<<8 | uint64(r.buf[r.at-4])<<16 | uint64(r.buf[r.at-3])<<24 | uint64(r.buf[r.at-2])<<32 | uint64(r.buf[r.at-1])<<40
 }
 
 func (r *Reader) ReadUint64() uint64 {
@@ -1317,10 +1325,9 @@ func (r *Reader) ReadUint64() uint64 {
 		}
 		r.n += m
 	}
-	res := uint64(r.buf[r.at]) | uint64(r.buf[r.at+1])<<8 | uint64(r.buf[r.at+2])<<16 | uint64(r.buf[r.at+3])<<24 | uint64(r.buf[r.at+4])<<32 | uint64(r.buf[r.at+5])<<40 | uint64(r.buf[r.at+6])<<48 | uint64(r.buf[r.at+7])<<56
 	r.at += 8
 	r.n -= 8
-	return res
+	return uint64(r.buf[r.at-8]) | uint64(r.buf[r.at-7])<<8 | uint64(r.buf[r.at-6])<<16 | uint64(r.buf[r.at-5])<<24 | uint64(r.buf[r.at-4])<<32 | uint64(r.buf[r.at-3])<<40 | uint64(r.buf[r.at-2])<<48 | uint64(r.buf[r.at-1])<<56
 }
 
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
