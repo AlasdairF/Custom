@@ -497,7 +497,7 @@ func (w *Writer) WriteString16(s string) (n int, err error) {
 	} else {
 		n, err = w.WriteString(s)
 	}
-	n++
+	n += 2
 	return
 }
 
@@ -509,7 +509,7 @@ func (w *Writer) WriteString32(s string) (n int, err error) {
 	} else {
 		n, err = w.WriteString(s)
 	}
-	n++
+	n += 4
 	return
 }
 
