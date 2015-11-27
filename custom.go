@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	maxPools = 12
+	maxPool = 12
 	bufferLen  = 100000 // determined in trials on writing to disk and writing to memory
 	bufferLenMinus1  = bufferLen - 1
 	bufferLenMinus2  = bufferLen - 2
@@ -44,7 +44,7 @@ const (
 
 // -------- POOL --------
 
-var pool = make(chan []byte, maxPools)
+var pool = make(chan []byte, maxPool)
 
 func getBuf() []byte {
     var c []byte
