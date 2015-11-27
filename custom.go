@@ -49,13 +49,13 @@ var pool = make(chan []byte, numberOfPools)
 func getBuf() []byte {
     var c []byte
     select {
-		case c = <- p.pool:
+		case c = <- pool:
 		default: c = make([]byte, bufferLen)
     }
     return c
 }
 
-func (p *Pool) returnBuf(c []byte) {
+func returnBuf(c []byte) {
     select {
 		case pool <- c:
 		default:
