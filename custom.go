@@ -10,15 +10,16 @@ import (
 )
 
 const (
-	bestLength  = 100000 // determined in trials on writing to file and writing to disk
-	bestLengthMinus1  = bestLength - 1
-	bestLengthMinus2  = bestLength - 2
-	bestLengthMinus3  = bestLength - 3
-	bestLengthMinus4  = bestLength - 4
-	bestLengthMinus5  = bestLength - 5
-	bestLengthMinus6  = bestLength - 6
-	bestLengthMinus7  = bestLength - 7
-	bestLengthMinus8  = bestLength - 8
+	numberOfPools = 5
+	bufferLen  = 100000 // determined in trials on writing to disk and writing to memory
+	bufferLenMinus1  = bufferLen - 1
+	bufferLenMinus2  = bufferLen - 2
+	bufferLenMinus3  = bufferLen - 3
+	bufferLenMinus4  = bufferLen - 4
+	bufferLenMinus5  = bufferLen - 5
+	bufferLenMinus6  = bufferLen - 6
+	bufferLenMinus7  = bufferLen - 7
+	bufferLenMinus8  = bufferLen - 8
 )
 
 // Constants stolen from unicode/utf8 for WriteRune
@@ -41,34 +42,54 @@ const (
 	rune3Max = 1<<16 - 1
 )
 
+// -------- POOL --------
+
+var pool = make(chan []byte, numberOfPools)
+
+func getBuf() []byte {
+    var c []byte
+    select {
+		case c = <- p.pool:
+		default: c = make([]byte, bufferLen)
+    }
+    return c
+}
+
+func (p *Pool) returnBuf(c []byte) {
+    select {
+		case pool <- c:
+		default:
+    }
+}
+
 // -------- FIXED BUFFER WRITER --------
 
 type Writer struct {
 	w io.Writer
-	data [bestLength]byte
+	data []byte
 	cursor int
 }
 
 func NewWriter(f io.Writer) *Writer {
-	return &Writer{w: f}
+	return &Writer{w: f, data: getBuf()}
 }
 
 func NewZlibWriter(f io.Writer) *Writer {
-	return &Writer{w: zlib.NewWriter(f)}
+	return &Writer{w: zlib.NewWriter(f), data: getBuf()}
 }
 
 func NewSnappyWriter(f io.Writer) *Writer {
-	return &Writer{w: snappy.NewWriter(f)}
+	return &Writer{w: snappy.NewWriter(f), data: getBuf()}
 }
 
 func (w *Writer) Write(p []byte) (int, error) {
 	l := len(p)
-	if w.cursor + l > bestLength {
+	if w.cursor + l > bufferLen {
 		var err error
 		if w.cursor > 0 {
 			_, err = w.w.Write(w.data[0:w.cursor]) // flush
 		}
-		if l > bestLength { // data to write is longer than the length of the Writer
+		if l > bufferLen { // data to write is longer than the length of the Writer
 			w.cursor = 0
 			return w.w.Write(p)
 		}
@@ -83,12 +104,12 @@ func (w *Writer) Write(p []byte) (int, error) {
 
 func (w *Writer) WriteString(p string) (int, error) {
 	l := len(p)
-	if w.cursor + l > bestLength {
+	if w.cursor + l > bufferLen {
 		var err error
 		if w.cursor > 0 {
 			_, err = w.w.Write(w.data[0:w.cursor]) // flush
 		}
-		if l > bestLength { // data to write is longer than the length of the Writer
+		if l > bufferLen { // data to write is longer than the length of the Writer
 			w.cursor = 0
 			return w.w.Write([]byte(p))
 		}
@@ -102,7 +123,7 @@ func (w *Writer) WriteString(p string) (int, error) {
 }
 
 func (w *Writer) WriteByte(p byte) error {
-	if w.cursor < bestLength {
+	if w.cursor < bufferLen {
 		w.data[w.cursor] = p
 		w.cursor++
 		return nil
@@ -137,7 +158,7 @@ func (w *Writer) WriteRune(r rune) (int, error) {
 }
 
 func (w *Writer) Write2Bytes(p1, p2 byte) error {
-	if w.cursor < bestLengthMinus1 {
+	if w.cursor < bufferLenMinus1 {
 		w.data[w.cursor] = p1
 		w.data[w.cursor + 1] = p2
 		w.cursor += 2
@@ -155,7 +176,7 @@ func (w *Writer) Write2Bytes(p1, p2 byte) error {
 
 func (w *Writer) Write3Bytes(p1, p2, p3 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus2 {
+	if cursor < bufferLenMinus2 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -175,7 +196,7 @@ func (w *Writer) Write3Bytes(p1, p2, p3 byte) error {
 
 func (w *Writer) Write4Bytes(p1, p2, p3, p4 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus3 {
+	if cursor < bufferLenMinus3 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -197,7 +218,7 @@ func (w *Writer) Write4Bytes(p1, p2, p3, p4 byte) error {
 
 func (w *Writer) Write5Bytes(p1, p2, p3, p4, p5 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus4 {
+	if cursor < bufferLenMinus4 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -221,7 +242,7 @@ func (w *Writer) Write5Bytes(p1, p2, p3, p4, p5 byte) error {
 
 func (w *Writer) Write6Bytes(p1, p2, p3, p4, p5, p6 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus5 {
+	if cursor < bufferLenMinus5 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -247,7 +268,7 @@ func (w *Writer) Write6Bytes(p1, p2, p3, p4, p5, p6 byte) error {
 
 func (w *Writer) Write7Bytes(p1, p2, p3, p4, p5, p6, p7 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus6 {
+	if cursor < bufferLenMinus6 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -275,7 +296,7 @@ func (w *Writer) Write7Bytes(p1, p2, p3, p4, p5, p6, p7 byte) error {
 
 func (w *Writer) Write8Bytes(p1, p2, p3, p4, p5, p6, p7, p8 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus7 {
+	if cursor < bufferLenMinus7 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -305,7 +326,7 @@ func (w *Writer) Write8Bytes(p1, p2, p3, p4, p5, p6, p7, p8 byte) error {
 
 func (w *Writer) Write9Bytes(p1, p2, p3, p4, p5, p6, p7, p8, p9 byte) error {
 	cursor := w.cursor
-	if cursor < bestLengthMinus8 {
+	if cursor < bufferLenMinus8 {
 		w.data[cursor] = p1
 		w.data[cursor + 1] = p2
 		w.data[cursor + 2] = p3
@@ -551,6 +572,7 @@ func (w *Writer) Close() (err error) {
 		_, err = w.w.Write(w.data[0:w.cursor])
 		w.cursor = 0
 	}
+	returnBuf(w.data)
 	if sw, ok := w.w.(io.Closer); ok { // Attempt to close underlying writer if it has a Close() method
 		if err == nil {
 			err = sw.Close()
@@ -570,12 +592,6 @@ func (w *Writer) Flush() (err error) {
 	return
 }
 
-func (w *Writer) Recycle(f io.Writer) (err error) {
-	w.cursor = 0
-	w.w = f
-	return
-}
-
 // -------- GROWING BUFFER --------
 
 type Buffer struct {
@@ -584,7 +600,12 @@ type Buffer struct {
 }
 
 func NewBuffer(l int) *Buffer {
-	return &Buffer{data: make([]byte, l), length: l}
+	if l <= bufferLen {
+		return &Buffer{data: getBuf(), length: bufferLen}
+	} else {
+		return &Buffer{data: make([]byte, l), length: l}
+	}
+	
 }
 
 func (w *Buffer) Write(p []byte) (int, error) {
@@ -1005,12 +1026,25 @@ func (w *Buffer) Len() int {
 	return w.cursor
 }
 
+// This slice is not safe to use once the custom.Buffer has Close()
 func (w *Buffer) Bytes() []byte {
 	return w.data[0:w.cursor]
 }
 
+func (w *Buffer) BytesCopy() []byte {
+	b := make([]byte, w.cursor)
+	copy(b, w.data)
+	return b
+}
+
 func (w *Buffer) String() string {
 	return string(w.data[0:w.cursor])
+}
+
+func (w *Buffer) Close() {
+	if w.length == bufferLen {
+		returnBuf(w.data)
+	}
 }
 
 func numbytes(v uint64) uint8 {
@@ -1036,24 +1070,30 @@ type Reader struct {
 	buf []byte	// the buffer for reading data
 }
 
-func NewReader(f io.Reader, bufsize int) *Reader {
-	return &Reader{f: f, buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
+func NewReader(f io.Reader) *Reader {
+	return &Reader{f: f, buf: getBuf()}
 }
 
-func NewZlibReader(f io.Reader, bufsize int) *Reader {
+func NewZlibReader(f io.Reader) *Reader {
 	z, err := zlib.NewReader(f)
 	if err != nil {
 		panic(err)
 	}
-	return &Reader{f: z, buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
+	return &Reader{f: z, buf: getBuf()}
 }
 
-func NewSnappyReader(f io.Reader, bufsize int) *Reader {
-	return &Reader{f: snappy.NewReader(f), buf: make([]byte, bufsize + 512)} // 512 is bytes.MinRead
+func NewSnappyReader(f io.Reader) *Reader {
+	return &Reader{f: snappy.NewReader(f), buf: getBuf()}
 }
 
 func (r *Reader) Read(b []byte) (int, error) {
 	x := len(b)
+	if x > bufferLen {
+		n := r.n
+		copy(b, r.buf[r.at:r.at+n])
+		r.at, r.n = 0, 0
+		return io.ReadAtLeast(r.f, b[n:], x-n)
+	}
 	for r.n < x {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -1070,6 +1110,15 @@ func (r *Reader) Read(b []byte) (int, error) {
 }
 
 func (r *Reader) Readx(x int) []byte {
+	b := make([]byte, x)
+	if x > bufferLen {
+		n := r.n
+		copy(b, r.buf[r.at:r.at+n])
+		r.at, r.n = 0, 0
+		if _, err := io.ReadAtLeast(r.f, b[n:], x-n); err != nil {
+			panic(err)
+		}
+	}
 	for r.n < x {
 		copy(r.buf, r.buf[r.at:r.at+r.n])
 		r.at = 0
@@ -1079,11 +1128,10 @@ func (r *Reader) Readx(x int) []byte {
 		}
 		r.n += m
 	}
-	tmp := make([]byte, x)
-	copy(tmp, r.buf[r.at:r.at+x]) // must be copied to avoid memory leak
+	copy(b, r.buf[r.at:r.at+x]) // must be copied to avoid memory leak
 	r.at += x
 	r.n -= x
-	return tmp
+	return b
 }
 
 func (r *Reader) ReadxSlice(x int) []byte {
@@ -1508,13 +1556,9 @@ func (r *Reader) EOF() error {
 	return err
 }
 
-func (r *Reader) Recycle(f io.Reader) {
-	r.at, r.n = 0, 0
-	r.f = f
-}
-
 func (r *Reader) Close() error {
-	if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying writer if it has a Close() method
+	returnBuf(r.buf)
+	if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying reader if it has a Close() method
 		return sw.Close()
 	}
 	return nil
@@ -1824,3 +1868,4 @@ func (r *BytesReader) EOF() error {
 	}
 	return errors.New(`Not EOF`)
 }
+
