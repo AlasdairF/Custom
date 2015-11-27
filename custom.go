@@ -68,6 +68,7 @@ type Writer struct {
 	w io.Writer
 	data []byte
 	cursor int
+	close bool
 }
 
 func NewWriter(f io.Writer) *Writer {
@@ -75,11 +76,11 @@ func NewWriter(f io.Writer) *Writer {
 }
 
 func NewZlibWriter(f io.Writer) *Writer {
-	return &Writer{w: zlib.NewWriter(f), data: getBuf()}
+	return &Writer{w: zlib.NewWriter(f), data: getBuf(), close: true}
 }
 
 func NewSnappyWriter(f io.Writer) *Writer {
-	return &Writer{w: snappy.NewWriter(f), data: getBuf()}
+	return &Writer{w: snappy.NewWriter(f), data: getBuf(), close: true}
 }
 
 func (w *Writer) Write(p []byte) (int, error) {
@@ -572,12 +573,17 @@ func (w *Writer) Close() (err error) {
 		_, err = w.w.Write(w.data[0:w.cursor])
 		w.cursor = 0
 	}
-	returnBuf(w.data)
-	if sw, ok := w.w.(io.Closer); ok { // Attempt to close underlying writer if it has a Close() method
-		if err == nil {
-			err = sw.Close()
-		} else {
-			sw.Close()
+	if len(w.data) == bufferLen {
+		returnBuf(w.data)
+		w.data = nil
+	}
+	if w.close {
+		if sw, ok := w.w.(io.Closer); ok { // Attempt to close underlying writer if it has a Close() method
+			if err == nil {
+				err = sw.Close()
+			} else {
+				sw.Close()
+			}
 		}
 	}
 	w.w = nil
@@ -1044,6 +1050,8 @@ func (w *Buffer) String() string {
 func (w *Buffer) Close() {
 	if w.length == bufferLen {
 		returnBuf(w.data)
+		w.length = 0
+		w.data = nil
 	}
 }
 
@@ -1068,6 +1076,7 @@ type Reader struct {
 	at int		// the cursor for where I am in buf
 	n int		// how much uncompressed but as of yet unparsed data is left in buf
 	buf []byte	// the buffer for reading data
+	close bool
 }
 
 func NewReader(f io.Reader) *Reader {
@@ -1079,11 +1088,11 @@ func NewZlibReader(f io.Reader) *Reader {
 	if err != nil {
 		panic(err)
 	}
-	return &Reader{f: z, buf: getBuf()}
+	return &Reader{f: z, buf: getBuf(), close: true}
 }
 
 func NewSnappyReader(f io.Reader) *Reader {
-	return &Reader{f: snappy.NewReader(f), buf: getBuf()}
+	return &Reader{f: snappy.NewReader(f), buf: getBuf(), close: true}
 }
 
 func (r *Reader) Read(b []byte) (int, error) {
@@ -1557,10 +1566,16 @@ func (r *Reader) EOF() error {
 }
 
 func (r *Reader) Close() error {
-	returnBuf(r.buf)
-	if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying reader if it has a Close() method
-		return sw.Close()
+	if len(r.buf) == bufferLen {
+		returnBuf(r.buf)
+		r.buf = nil
 	}
+	if r.close {
+		if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying reader if it has a Close() method
+			return sw.Close()
+		}
+	}
+	r.f = nil
 	return nil
 }
 
