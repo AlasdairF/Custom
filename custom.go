@@ -1134,7 +1134,7 @@ func (r *Reader) Read(b []byte) (int, error) {
 		return x, nil
 	}
 	if r.n < x {
-		if err := loadmore(x); err != nil {
+		if err := r.loadmore(x); err != nil {
 			return 0, err
 		}
 	}
@@ -1156,7 +1156,7 @@ func (r *Reader) Readx(x int) []byte {
 		return b
 	}
 	if r.n < x {
-		if err := loadmore(x); err != nil {
+		if err := r.loadmore(x); err != nil {
 			panic(err)
 		}
 	}
@@ -1178,7 +1178,7 @@ func (r *Reader) ReadxSlice(x int) []byte {
 		return b
 	}
 	if r.n < x {
-		if err := loadmore(x); err != nil {
+		if err := r.loadmore(x); err != nil {
 			panic(err)
 		}
 	}
@@ -1189,7 +1189,7 @@ func (r *Reader) ReadxSlice(x int) []byte {
 
 func (r *Reader) ReadByte() uint8 {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	r.at++
 	r.n--
@@ -1198,7 +1198,7 @@ func (r *Reader) ReadByte() uint8 {
 
 func (r *Reader) ReadBool() (b1 bool) {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	if r.buf[r.at] > 0 {
 		b1 = true
@@ -1210,7 +1210,7 @@ func (r *Reader) ReadBool() (b1 bool) {
 
 func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	switch r.buf[r.at] {
 		case 1: b1 = true
@@ -1224,7 +1224,7 @@ func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
 
 func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 bool, b7 bool, b8 bool) {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	c := r.buf[r.at]
 	if c & 1 > 0 {
@@ -1258,7 +1258,7 @@ func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 b
 
 func (r *Reader) Read2Uint4s() (uint8, uint8) {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	res1, res2 := r.buf[r.at] & 15, r.buf[r.at] >> 4
 	r.at++
@@ -1302,7 +1302,7 @@ func (r *Reader) ReadRune() rune {
 
 func (r *Reader) ReadUint16() uint16 {
 	if r.n < 2 {
-		if err := loadmore(2); err != nil {
+		if err := r.loadmore(2); err != nil {
 			panic(err)
 		}
 	}
@@ -1331,7 +1331,7 @@ func (r *Reader) ReadInt16Variable() int16 {
 
 func (r *Reader) ReadUint24() uint32 {
 	if r.n < 3 {
-		if err := loadmore(3); err != nil {
+		if err := r.loadmore(3); err != nil {
 			panic(err)
 		}
 	}
@@ -1342,7 +1342,7 @@ func (r *Reader) ReadUint24() uint32 {
 
 func (r *Reader) ReadUint32() uint32 {
 	if r.n < 4 {
-		if err := loadmore(4); err != nil {
+		if err := r.loadmore(4); err != nil {
 			panic(err)
 		}
 	}
@@ -1353,7 +1353,7 @@ func (r *Reader) ReadUint32() uint32 {
 
 func (r *Reader) ReadUint48() uint64 {
 	if r.n < 6 {
-		if err := loadmore(6); err != nil {
+		if err := r.loadmore(6); err != nil {
 			panic(err)
 		}
 	}
@@ -1364,7 +1364,7 @@ func (r *Reader) ReadUint48() uint64 {
 
 func (r *Reader) ReadUint64() uint64 {
 	if r.n < 8 {
-		if err := loadmore(8); err != nil {
+		if err := r.loadmore(8); err != nil {
 			panic(err)
 		}
 	}
@@ -1377,7 +1377,7 @@ func (r *Reader) ReadUint64() uint64 {
 func (r *Reader) ReadUint64Variable() uint64 {
 	s1 := int(r.ReadByte())
 	if r.n < s1 {
-		if err := loadmore(s1); err != nil {
+		if err := r.loadmore(s1); err != nil {
 			panic(err)
 		}
 	}
@@ -1404,7 +1404,7 @@ func (r *Reader) Read2Uint64sVariable() (uint64, uint64) {
 	s2 &= 15
 	x := int(s1 + s2)
 	if r.n < x {
-		if err := loadmore(x); err != nil {
+		if err := r.loadmore(x); err != nil {
 			panic(err)
 		}
 	}
@@ -1477,7 +1477,7 @@ func (r *Reader) Read12And4() (uint16, uint16) {
 
 func (r *Reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	c := r.buf[r.at]
 	var b1, b2, b3, b4 bool
@@ -1500,7 +1500,7 @@ func (r *Reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
 
 func (r *Reader) ReadSpecial2() (uint8, uint8, uint8, bool) {
 	if r.n == 0 {
-		loadmore1()
+		r.loadmore1()
 	}
 	c := r.buf[r.at]
 	var b1 bool
