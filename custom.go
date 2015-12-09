@@ -1788,7 +1788,7 @@ func (r *BytesReader) ReadString32() string {
 }
 
 // Moves the cursor forward x bytes without returning anything
-func (r *Reader) Discard(x int) {
+func (r *BytesReader) Discard(x int) {
 	r.cursor += x
 }
 
