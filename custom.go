@@ -489,20 +489,20 @@ func (w *Writer) WriteUint64Variable(v uint64) error {
 
 // Encode 2 uint64s in 3-13 bytes and write it to the buffer. The length is always 1 byte more than the minimum representation of both the uint64s.
 func (w *Writer) Write2Uint64sVariable(v1 uint64, v2 uint64) error {
-	s1 := numbytes(v1)
 	s2 := numbytes(v2)
-	w.WriteByte((s1 << 4) | s2)
-	switch s1 {
-		case 1: w.WriteByte(byte(v1))
-		case 2: w.Write2Bytes(byte(v1), byte(v1 >> 8))
-		case 3: w.Write3Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16))
-		case 4: w.Write4Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24))
-		case 5: w.Write5Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32))
-		case 6: w.Write6Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40))
-		case 7: w.Write7Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48))
-		case 8: w.Write8Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
+	switch numbytes(v1) {
+		case 0: w.WriteByte(s2)
+		case 1: w.Write2Bytes(16 | s2, byte(v1))
+		case 2: w.Write3Bytes(32 | s2, byte(v1), byte(v1 >> 8))
+		case 3: w.Write4Bytes(48 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16))
+		case 4: w.Write5Bytes(64 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24))
+		case 5: w.Write6Bytes(80 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32))
+		case 6: w.Write7Bytes(96 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40))
+		case 7: w.Write8Bytes(112 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48))
+		case 8: w.Write9Bytes(128 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
 	}
 	switch s2 {
+		case 0: return nil
 		case 1: return w.WriteByte(byte(v2))
 		case 2: return w.Write2Bytes(byte(v2), byte(v2 >> 8))
 		case 3: return w.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
@@ -939,20 +939,20 @@ func (w *Buffer) WriteUint64Variable(v uint64) error {
 
 // Encode 2 uint64s in 3-13 bytes and write it to the buffer. The length is always 1 byte more than the minimum representation of both the uint64s.
 func (w *Buffer) Write2Uint64sVariable(v1 uint64, v2 uint64) error {
-	s1 := numbytes(v1)
 	s2 := numbytes(v2)
-	w.WriteByte((s1 << 4) | s2)
-	switch s1 {
-		case 1: w.WriteByte(byte(v1))
-		case 2: w.Write2Bytes(byte(v1), byte(v1 >> 8))
-		case 3: w.Write3Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16))
-		case 4: w.Write4Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24))
-		case 5: w.Write5Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32))
-		case 6: w.Write6Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40))
-		case 7: w.Write7Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48))
-		case 8: w.Write8Bytes(byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
+	switch numbytes(v1) {
+		case 0: w.WriteByte(s2)
+		case 1: w.Write2Bytes(16 | s2, byte(v1))
+		case 2: w.Write3Bytes(32 | s2, byte(v1), byte(v1 >> 8))
+		case 3: w.Write4Bytes(48 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16))
+		case 4: w.Write5Bytes(64 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24))
+		case 5: w.Write6Bytes(80 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32))
+		case 6: w.Write7Bytes(96 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40))
+		case 7: w.Write8Bytes(112 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 24), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48))
+		case 8: w.Write9Bytes(128 | s2, byte(v1), byte(v1 >> 8), byte(v1 >> 16), byte(v1 >> 25), byte(v1 >> 32), byte(v1 >> 40), byte(v1 >> 48), byte(v1 >> 56))
 	}
 	switch s2 {
+		case 0: return nil
 		case 1: return w.WriteByte(byte(v2))
 		case 2: return w.Write2Bytes(byte(v2), byte(v2 >> 8))
 		case 3: return w.Write3Bytes(byte(v2), byte(v2 >> 8), byte(v2 >> 16))
