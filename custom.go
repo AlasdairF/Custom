@@ -1094,7 +1094,7 @@ func NewSnappyReader(f io.Reader) *Reader {
 	return &Reader{f: snappy.NewReader(f), buf: getBuf(), close: true}
 }
 
-func (r *Reader) loadmore(x int) error {
+func (r *Reader) fill(x int) error {
 	copy(r.buf, r.buf[r.at:r.at+r.n])
 	r.at = 0
 	m, err := r.f.Read(r.buf[r.n:])
@@ -1112,7 +1112,7 @@ func (r *Reader) loadmore(x int) error {
 	return nil
 }
 
-func (r *Reader) loadmore1() {
+func (r *Reader) fill1() {
 	r.at = 0
 	m, err := r.f.Read(r.buf)
 	if err != nil {
@@ -1134,7 +1134,7 @@ func (r *Reader) Read(b []byte) (int, error) {
 		return x, nil
 	}
 	if r.n < x {
-		if err := r.loadmore(x); err != nil {
+		if err := r.fill(x); err != nil {
 			return 0, err
 		}
 	}
@@ -1157,7 +1157,7 @@ func (r *Reader) Readx(x int) []byte {
 		return b
 	}
 	if r.n < x {
-		if err := r.loadmore(x); err != nil {
+		if err := r.fill(x); err != nil {
 			panic(err)
 		}
 	}
@@ -1180,7 +1180,7 @@ func (r *Reader) ReadxRaw(x int) []byte {
 		return b
 	}
 	if r.n < x {
-		if err := r.loadmore(x); err != nil {
+		if err := r.fill(x); err != nil {
 			panic(err)
 		}
 	}
@@ -1192,7 +1192,7 @@ func (r *Reader) ReadxRaw(x int) []byte {
 // Read 1 byte
 func (r *Reader) ReadByte() uint8 {
 	if r.n == 0 {
-		r.loadmore1()
+		r.fill1()
 	}
 	r.at++
 	r.n--
@@ -1202,7 +1202,7 @@ func (r *Reader) ReadByte() uint8 {
 // Read and decode a boolean encoded with WriteBool
 func (r *Reader) ReadBool() (b1 bool) {
 	if r.n == 0 {
-		r.loadmore1()
+		r.fill1()
 	}
 	if r.buf[r.at] > 0 {
 		b1 = true
@@ -1215,7 +1215,7 @@ func (r *Reader) ReadBool() (b1 bool) {
 // Read and decode 2 booleans encoded with Write2Bools
 func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
 	if r.n == 0 {
-		r.loadmore1()
+		r.fill1()
 	}
 	switch r.buf[r.at] {
 		case 1: b1 = true
@@ -1230,7 +1230,7 @@ func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
 // Read and decode 8 booleans encoded with Write8Bools
 func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 bool, b7 bool, b8 bool) {
 	if r.n == 0 {
-		r.loadmore1()
+		r.fill1()
 	}
 	c := r.buf[r.at]
 	if c & 1 > 0 {
@@ -1265,7 +1265,7 @@ func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 b
 // Read and decode 2 uint8s encoded with Read2Uint4s
 func (r *Reader) Read2Uint4s() (uint8, uint8) {
 	if r.n == 0 {
-		r.loadmore1()
+		r.fill1()
 	}
 	res1, res2 := r.buf[r.at] & 15, r.buf[r.at] >> 4
 	r.at++
@@ -1293,7 +1293,7 @@ func (r *Reader) ReadUTF8() []byte {
 // Read a rune which was encoded as UTF8 (or with WriteRune)
 func (r *Reader) ReadRune() rune {
 	if r.n < 3 {
-		if err := r.loadmore(3); err != nil && err != io.EOF {
+		if err := r.fill(3); err != nil && err != io.EOF {
 			panic(err)
 		}
 	}
@@ -1313,7 +1313,7 @@ func (r *Reader) ReadRune() rune {
 // Read and decode a uint16 encoded with WriteUint16
 func (r *Reader) ReadUint16() uint16 {
 	if r.n < 2 {
-		if err := r.loadmore(2); err != nil {
+		if err := r.fill(2); err != nil {
 			panic(err)
 		}
 	}
@@ -1343,7 +1343,7 @@ func (r *Reader) ReadInt16Variable() int16 {
 // Read and decode an uint32 encoded with WriteUint24
 func (r *Reader) ReadUint24() uint32 {
 	if r.n < 3 {
-		if err := r.loadmore(3); err != nil {
+		if err := r.fill(3); err != nil {
 			panic(err)
 		}
 	}
@@ -1355,7 +1355,7 @@ func (r *Reader) ReadUint24() uint32 {
 // Read and decode an uint32 encoded with WriteUint32
 func (r *Reader) ReadUint32() uint32 {
 	if r.n < 4 {
-		if err := r.loadmore(4); err != nil {
+		if err := r.fill(4); err != nil {
 			panic(err)
 		}
 	}
@@ -1367,7 +1367,7 @@ func (r *Reader) ReadUint32() uint32 {
 // Read and decode an uint64 encoded with WriteUint48
 func (r *Reader) ReadUint48() uint64 {
 	if r.n < 6 {
-		if err := r.loadmore(6); err != nil {
+		if err := r.fill(6); err != nil {
 			panic(err)
 		}
 	}
@@ -1379,7 +1379,7 @@ func (r *Reader) ReadUint48() uint64 {
 // Read and decode an uint64 encoded with WriteUint64
 func (r *Reader) ReadUint64() uint64 {
 	if r.n < 8 {
-		if err := r.loadmore(8); err != nil {
+		if err := r.fill(8); err != nil {
 			panic(err)
 		}
 	}
@@ -1392,7 +1392,7 @@ func (r *Reader) ReadUint64() uint64 {
 func (r *Reader) ReadUint64Variable() uint64 {
 	s1 := int(r.ReadByte())
 	if r.n < s1 {
-		if err := r.loadmore(s1); err != nil {
+		if err := r.fill(s1); err != nil {
 			panic(err)
 		}
 	}
@@ -1419,7 +1419,7 @@ func (r *Reader) Read2Uint64sVariable() (uint64, uint64) {
 	s2 &= 15
 	x := int(s1 + s2)
 	if r.n < x {
-		if err := r.loadmore(x); err != nil {
+		if err := r.fill(x); err != nil {
 			panic(err)
 		}
 	}
@@ -1474,6 +1474,16 @@ func (r *Reader) ReadString16() string {
 // Read and decode a string encoded with WriteString32
 func (r *Reader) ReadString32() string {
 	return string(r.ReadxRaw(int(r.ReadUint32())))
+}
+
+func (r *Reader) Discard(x int) {
+	if r.n < x {
+		if err := r.fill(x); err != nil {
+			panic(err)
+		}
+	}
+	r.at += x
+	r.n -= x
 }
 
 // Seeks on the underlying io.Reader
@@ -1777,6 +1787,11 @@ func (r *BytesReader) ReadString32() string {
 	return string(r.ReadxRaw(int(r.ReadUint32())))
 }
 
+// Moves the cursor forward x bytes without returning anything
+func (r *Reader) Discard(x int) {
+	r.cursor += x
+}
+
 // Implements io.Seeker (see io.Seeker for usage)
 func (r *BytesReader) Seek(offset int64, whence int) (int64, error) {
 	var abs int64
@@ -1799,7 +1814,7 @@ func (r *BytesReader) Seek(offset int64, whence int) (int64, error) {
 
 // Returns nil if the cursor is at the end of the slice of bytes, otherwise returns an error
 func (r *BytesReader) EOF() error {
-	if r.cursor == len(r.data) {
+	if r.cursor >= len(r.data) {
 		return nil
 	}
 	return errors.New(`Not EOF`)
