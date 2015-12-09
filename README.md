@@ -3,10 +3,10 @@
 Custom provides very optimized writers and readers, speeding up writing and reading to and from both disk and memory.
 
 ### Structures
-*custom.Writer* wraps an io.Writer, optimizing the writes (replaces bufio.Writer)
-*custom.Reader* wraps an io.Reader, optimizing the reads (replaces bufio.Reader)
-*custom.Buffer* replaces bytes.Buffer
-*custom.BytesReader* replaces bytes.Reader
+- **custom.Writer** wraps an io.Writer, optimizing the writes (replaces bufio.Writer)
+- **custom.Reader** wraps an io.Reader, optimizing the reads (replaces bufio.Reader)
+- **custom.Buffer** replaces bytes.Buffer
+- **custom.BytesReader** replaces bytes.Reader
 
 ### Features
 - Highly optimized with focus on speed and efficiency for both disk and memory applications
