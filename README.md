@@ -17,7 +17,7 @@ Custom provides very optimized writers and readers, speeding up writing and read
 - Satisfies io.Reader, io.ReadCloser, io.ReadSeeker, io.RuneReader, io.Writer, io.WriteCloser, io.WriteSeeker
 
 ### Documentation
-[View documentation](https://www.github.com)
+[View documentation on Godoc](https://www.github.com)
 
 ### Writing Example
      fi, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(0644))
