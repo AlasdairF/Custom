@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	maxPool = 12
+	maxPool = 12 // maximum memory overhead 1.2MB
 	bufferLen  = 100000 // determined in trials on writing to disk and writing to memory
 	bufferLenMinus1  = bufferLen - 1
 	bufferLenMinus2  = bufferLen - 2
@@ -1095,22 +1095,48 @@ func NewSnappyReader(f io.Reader) *Reader {
 	return &Reader{f: snappy.NewReader(f), buf: getBuf(), close: true}
 }
 
-func (r *Reader) Read(b []byte) (int, error) {
-	x := len(b)
-	if x > bufferLen {
-		n := r.n
-		copy(b, r.buf[r.at:r.at+n])
-		r.at, r.n = 0, 0
-		return io.ReadAtLeast(r.f, b[n:], x-n)
+func (r *Reader) loadmore(x int) error {
+	copy(r.buf, r.buf[r.at:r.at+r.n])
+	r.at = 0
+	m, err := r.f.Read(r.buf[r.n:])
+	if err != nil {
+		return err
 	}
+	r.n += m
 	for r.n < x {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
+		m, err = r.f.Read(r.buf[r.n:])
 		if err != nil {
-			return x, err
+			return err
 		}
 		r.n += m
+	}
+	return nil
+}
+
+func (r *Reader) loadmore1() {
+	r.at = 0
+	m, err := r.f.Read(r.buf)
+	if err != nil {
+		panic(err)
+	}
+	r.n = m
+}
+
+func (r *Reader) Read(b []byte) (int, error) {
+	x := len(b)
+	if x > bufferLen { // the user has requested more data than the buffer size
+		n := r.n
+		copy(b, r.buf[r.at:r.at+n]) // copy what we have in the buffer
+		r.at, r.n = 0, 0 // buffer is now empty
+		if i, err := io.ReadAtLeast(r.f, b[n:], x-n); err != nil { // then read the remainder directly from the src
+			return n+i, err
+		}
+		return x, nil
+	}
+	if r.n < x {
+		if err := loadmore(x); err != nil {
+			return 0, err
+		}
 	}
 	copy(b, r.buf[r.at:r.at+x]) // must be copied to avoid memory leak
 	r.at += x
@@ -1120,22 +1146,19 @@ func (r *Reader) Read(b []byte) (int, error) {
 
 func (r *Reader) Readx(x int) []byte {
 	b := make([]byte, x)
-	if x > bufferLen {
+	if x > bufferLen { // the user has requested more data than the buffer size
 		n := r.n
-		copy(b, r.buf[r.at:r.at+n])
-		r.at, r.n = 0, 0
-		if _, err := io.ReadAtLeast(r.f, b[n:], x-n); err != nil {
+		copy(b, r.buf[r.at:r.at+n]) // copy what we have in the buffer
+		r.at, r.n = 0, 0 // buffer is now empty
+		if _, err := io.ReadAtLeast(r.f, b[n:], x-n); err != nil { // then read the remainder directly from the src
 			panic(err)
 		}
+		return b
 	}
-	for r.n < x {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < x {
+		if err := loadmore(x); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	copy(b, r.buf[r.at:r.at+x]) // must be copied to avoid memory leak
 	r.at += x
@@ -1144,26 +1167,29 @@ func (r *Reader) Readx(x int) []byte {
 }
 
 func (r *Reader) ReadxSlice(x int) []byte {
-	for r.n < x {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if x > bufferLen { // the user has requested more data than the buffer size
+		b := make([]byte, x)
+		n := r.n
+		copy(b, r.buf[r.at:r.at+n]) // copy what we have in the buffer
+		r.at, r.n = 0, 0 // buffer is now empty
+		if _, err := io.ReadAtLeast(r.f, b[n:], x-n); err != nil { // then read the remainder directly from the src
 			panic(err)
 		}
-		r.n += m
+		return b
 	}
+	if r.n < x {
+		if err := loadmore(x); err != nil {
+			panic(err)
+		}
+	}
+	r.at += x
+	r.n -= x
 	return r.buf[r.at-x:r.at]
 }
 
 func (r *Reader) ReadByte() uint8 {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	r.at++
 	r.n--
@@ -1171,13 +1197,8 @@ func (r *Reader) ReadByte() uint8 {
 }
 
 func (r *Reader) ReadBool() (b1 bool) {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	if r.buf[r.at] > 0 {
 		b1 = true
@@ -1188,13 +1209,8 @@ func (r *Reader) ReadBool() (b1 bool) {
 }
 
 func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	switch r.buf[r.at] {
 		case 1: b1 = true
@@ -1207,13 +1223,8 @@ func (r *Reader) Read2Bools() (b1 bool, b2 bool) {
 }
 
 func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 bool, b7 bool, b8 bool) {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	c := r.buf[r.at]
 	if c & 1 > 0 {
@@ -1246,13 +1257,8 @@ func (r *Reader) Read8Bools() (b1 bool, b2 bool, b3 bool, b4 bool, b5 bool, b6 b
 }
 
 func (r *Reader) Read2Uint4s() (uint8, uint8) {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	res1, res2 := r.buf[r.at] & 15, r.buf[r.at] >> 4
 	r.at++
@@ -1295,14 +1301,10 @@ func (r *Reader) ReadRune() rune {
 }
 
 func (r *Reader) ReadUint16() uint16 {
-	for r.n < 2 {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < 2 {
+		if err := loadmore(2); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	r.at += 2
 	r.n -= 2
@@ -1328,14 +1330,10 @@ func (r *Reader) ReadInt16Variable() int16 {
 }
 
 func (r *Reader) ReadUint24() uint32 {
-	for r.n < 3 {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < 3 {
+		if err := loadmore(3); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	r.at += 3
 	r.n -= 3
@@ -1343,14 +1341,10 @@ func (r *Reader) ReadUint24() uint32 {
 }
 
 func (r *Reader) ReadUint32() uint32 {
-	for r.n < 4 {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < 4 {
+		if err := loadmore(4); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	r.at += 4
 	r.n -= 4
@@ -1358,14 +1352,10 @@ func (r *Reader) ReadUint32() uint32 {
 }
 
 func (r *Reader) ReadUint48() uint64 {
-	for r.n < 6 {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < 6 {
+		if err := loadmore(6); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	r.at += 6
 	r.n -= 6
@@ -1373,14 +1363,10 @@ func (r *Reader) ReadUint48() uint64 {
 }
 
 func (r *Reader) ReadUint64() uint64 {
-	for r.n < 8 {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < 8 {
+		if err := loadmore(8); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	r.at += 8
 	r.n -= 8
@@ -1390,14 +1376,10 @@ func (r *Reader) ReadUint64() uint64 {
 // The first byte stores the bit length of the two integers. Then come the two integers. Length is only 1 byte more than the smallest representation of both integers.
 func (r *Reader) ReadUint64Variable() uint64 {
 	s1 := int(r.ReadByte())
-	for r.n < s1 {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	if r.n < s1 {
+		if err := loadmore(s1); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	var res1 uint64
 	switch s1 {
@@ -1420,14 +1402,11 @@ func (r *Reader) Read2Uint64sVariable() (uint64, uint64) {
 	s2 := r.ReadByte()
 	s1 := s2 >> 4
 	s2 &= 15
-	for r.n < int(s1 + s2) {
-		copy(r.buf, r.buf[r.at:r.at+r.n])
-		r.at = 0
-		m, err := r.f.Read(r.buf[r.n:])
-		if err != nil {
+	x := int(s1 + s2)
+	if r.n < x {
+		if err := loadmore(x); err != nil {
 			panic(err)
 		}
-		r.n += m
 	}
 	var res1, res2 uint64
 	switch s1 {
@@ -1497,13 +1476,8 @@ func (r *Reader) Read12And4() (uint16, uint16) {
 */
 
 func (r *Reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	c := r.buf[r.at]
 	var b1, b2, b3, b4 bool
@@ -1525,13 +1499,8 @@ func (r *Reader) ReadSpecial() (uint8, bool, bool, bool, bool) {
 }
 
 func (r *Reader) ReadSpecial2() (uint8, uint8, uint8, bool) {
-	for r.n == 0 {
-		r.at = 0
-		m, err := r.f.Read(r.buf)
-		if err != nil {
-			panic(err)
-		}
-		r.n = m
+	if r.n == 0 {
+		loadmore1()
 	}
 	c := r.buf[r.at]
 	var b1 bool
