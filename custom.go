@@ -1167,7 +1167,7 @@ func (r *Reader) Readx(x int) []byte {
 	return b
 }
 
-// Reads x bytes and returns a slice of the buffer. This slice is not a copy and so should must be used or copied before the next read.
+// Reads x bytes and returns a slice of the buffer. This slice is not a copy and so must be used or copied before the next read.
 func (r *Reader) ReadxRaw(x int) []byte {
 	if x > bufferLen { // the user has requested more data than the buffer size
 		b := make([]byte, x)
@@ -1280,13 +1280,37 @@ func (r *Reader) ReadUTF8() []byte {
 		return []byte{first}
 	}
 	if first & 32 == 0 { // length 2
-			return []byte{first, r.ReadByte()}
+		return []byte{first, r.ReadByte()}
 	} else {
 		b := make([]byte, 3)
 		b[0] = first
 		b[1] = r.ReadByte()
 		b[2] = r.ReadByte()
 		return b
+	}
+}
+
+// Read a UTF8 and return it as a slice of the buffer. This slice is not a copy and so must be used or copied before the next read.
+func (r *Reader) ReadUTF8Raw() []byte {
+	if r.n < 3 {
+		if err := r.fill(3); err != nil && err != io.EOF {
+			panic(err)
+		}
+	}
+	first := r.buf[r.at]
+	if first < 128 { // length 1
+		r.at++
+		r.n--
+		return r.buf[r.at-1:r.at]
+	}
+	if first & 32 == 0 { // length 2
+		r.at += 2
+		r.n -= 2
+		return r.buf[r.at-2:r.at]
+	} else {
+		r.at += 3
+		r.n -= 3
+		return r.buf[r.at-3:r.at]
 	}
 }
 
@@ -1299,13 +1323,19 @@ func (r *Reader) ReadRune() rune {
 	}
 	first := r.buf[r.at]
 	if first < 128 { // length 1
+		r.at++
+		r.n--
 		return rune(first)
 	}
 	if first & 32 == 0 { // length 2
 		r, _ := utf8.DecodeRune(r.buf[r.at:r.at+2])
+		r.at += 2
+		r.n -= 2
 		return r
 	} else {
 		r, _ := utf8.DecodeRune(r.buf[r.at:r.at+3])
+		r.at += 3
+		r.n -= 3
 		return r
 	}
 }
