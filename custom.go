@@ -7,7 +7,7 @@ import (
  "io"
  "errors"
  "compress/zlib"
- "github.com/golang/snappy"
+ "github.com/AlasdairF/snappy"
 )
 
 const (
