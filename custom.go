@@ -1308,15 +1308,15 @@ func (r *Reader) ReadRune() rune {
 		return rune(first)
 	}
 	if first & 32 == 0 { // length 2
-		r, _ := utf8.DecodeRune(r.buf[r.at:r.at+2])
+		rn, _ := utf8.DecodeRune(r.buf[r.at:r.at+2])
 		r.at += 2
 		r.n -= 2
-		return r
+		return rn
 	} else {
-		r, _ := utf8.DecodeRune(r.buf[r.at:r.at+3])
+		rn, _ := utf8.DecodeRune(r.buf[r.at:r.at+3])
 		r.at += 3
 		r.n -= 3
-		return r
+		return rn
 	}
 }
 
@@ -1664,12 +1664,12 @@ func (r *BytesReader) ReadRune() rune {
 	}
 	if r.data[r.cursor] & 32 == 0 { // length 2
 		r.cursor += 2
-		r, _ := utf8.DecodeRune(r.data[r.cursor-2:r.cursor])
-		return r
+		rn, _ := utf8.DecodeRune(r.data[r.cursor-2:r.cursor])
+		return rn
 	} else {
 		r.cursor += 3
-		r, _ := utf8.DecodeRune(r.data[r.cursor-3:r.cursor])
-		return r
+		rn, _ := utf8.DecodeRune(r.data[r.cursor-3:r.cursor])
+		return rn
 	}
 }
 
