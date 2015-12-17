@@ -1,6 +1,7 @@
 package custom
 
 import (
+ "github.com/AlasdairF/Pool"
  "unicode/utf8"
  "math"
  "io"
@@ -10,8 +11,7 @@ import (
 )
 
 const (
-	maxPool = 12 // maximum memory overhead 1.2MB
-	bufferLen  = 100000 // determined in trials on writing to disk and writing to memory
+	bufferLen = pool.Size // determined in trials on writing to disk and writing to memory
 	bufferLenMinus1  = bufferLen - 1
 	bufferLenMinus2  = bufferLen - 2
 	bufferLenMinus3  = bufferLen - 3
@@ -42,26 +42,6 @@ const (
 	rune3Max = 1<<16 - 1
 )
 
-// -------- POOL --------
-
-var pool = make(chan []byte, maxPool)
-
-func getBuf() []byte {
-    var c []byte
-    select {
-		case c = <- pool:
-		default: c = make([]byte, bufferLen)
-    }
-    return c
-}
-
-func returnBuf(c []byte) {
-    select {
-		case pool <- c:
-		default:
-    }
-}
-
 // -------- FIXED BUFFER WRITER --------
 
 type Writer struct {
@@ -73,17 +53,17 @@ type Writer struct {
 
 // Creates a new buffered writer wrapping an io.Writer
 func NewWriter(f io.Writer) *Writer {
-	return &Writer{w: f, data: getBuf()}
+	return &Writer{w: f, data: pool.Get(bufferLen)}
 }
 
 // Creates a new buffered Zlib writer wrapping an io.Writer
 func NewZlibWriter(f io.Writer) *Writer {
-	return &Writer{w: zlib.NewWriter(f), data: getBuf(), close: true}
+	return &Writer{w: zlib.NewWriter(f), data: pool.Get(bufferLen), close: true}
 }
 
 // Creates a new buffered Snappy writer wrapping an io.Writer
 func NewSnappyWriter(f io.Writer) *Writer {
-	return &Writer{w: snappy.NewWriter(f), data: getBuf(), close: true}
+	return &Writer{w: snappy.NewWriter(f), data: pool.Get(bufferLen), close: true}
 }
 
 // Write a slice of bytes to the buffer. Implements io.Writer interface
@@ -571,7 +551,7 @@ func (w *Writer) Close() (err error) {
 		w.cursor = 0
 	}
 	if len(w.data) == bufferLen {
-		returnBuf(w.data)
+		pool.Return(w.data)
 		w.data = nil
 	}
 	if w.close {
@@ -606,7 +586,7 @@ type Buffer struct {
 // Creates a new buffer
 func NewBuffer(l int) *Buffer {
 	if l <= bufferLen {
-		return &Buffer{data: getBuf(), length: bufferLen}
+		return &Buffer{data: pool.Get(bufferLen), length: bufferLen}
 	} else {
 		return &Buffer{data: make([]byte, l), length: l}
 	}
@@ -1045,7 +1025,7 @@ func (w *Buffer) String() string {
 // Releases the buffer back to the pool
 func (w *Buffer) Close() {
 	if w.length == bufferLen {
-		returnBuf(w.data)
+		pool.Return(w.data)
 		w.length = 0
 		w.data = nil
 	}
@@ -1077,7 +1057,7 @@ type Reader struct {
 
 // Creates a new buffered reader wrapping an io.Reader
 func NewReader(f io.Reader) *Reader {
-	return &Reader{f: f, buf: getBuf()}
+	return &Reader{f: f, buf: pool.Get(bufferLen)}
 }
 
 // Creates a new buffered reader wrapping an io.Reader which contains Zlib compressed data
@@ -1086,12 +1066,12 @@ func NewZlibReader(f io.Reader) *Reader {
 	if err != nil {
 		panic(err)
 	}
-	return &Reader{f: z, buf: getBuf(), close: true}
+	return &Reader{f: z, buf: pool.Get(bufferLen), close: true}
 }
 
 // Creates a new buffered reader wrapping an io.Reader which contains Snappy compressed data
 func NewSnappyReader(f io.Reader) *Reader {
-	return &Reader{f: snappy.NewReader(f), buf: getBuf(), close: true}
+	return &Reader{f: snappy.NewReader(f), buf: pool.Get(bufferLen), close: true}
 }
 
 func (r *Reader) fill(x int) error {
@@ -1539,10 +1519,8 @@ func (r *Reader) EOF() error {
 
 // Releases the buffer back to the pool
 func (r *Reader) Close() error {
-	if len(r.buf) == bufferLen {
-		returnBuf(r.buf)
-		r.buf = nil
-	}
+	pool.Return(r.buf)
+	r.buf = nil
 	if r.close {
 		if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying reader if it has a Close() method
 			return sw.Close()
