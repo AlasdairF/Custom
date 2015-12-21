@@ -592,14 +592,21 @@ func NewBuffer(l int) *Buffer {
 	}
 }
 
+func (w *Buffer) grow(l int) {
+	w.length = (w.length + l) * 2
+	newAr := make([]byte, w.length)
+	copy(newAr, w.data)
+	if w.length == bufferLen {
+		pool.Return(w.data)
+	}
+	w.data = newAr
+}
+
 // Write a slice of bytes to the buffer. Implements io.Writer interface
 func (w *Buffer) Write(p []byte) (int, error) {
 	l := len(p)
 	if w.cursor + l > w.length {
-		w.length = (w.length + l) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(l)
 	}
 	copy(w.data[w.cursor:], p)
 	w.cursor += l
@@ -610,10 +617,7 @@ func (w *Buffer) Write(p []byte) (int, error) {
 func (w *Buffer) WriteString(p string) (int, error) {
 	l := len(p)
 	if w.cursor + l > w.length {
-		w.length = (w.length + l) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(l)
 	}
 	copy(w.data[w.cursor:], p)
 	w.cursor += l
@@ -623,10 +627,7 @@ func (w *Buffer) WriteString(p string) (int, error) {
 // Write a byte to the buffer
 func (w *Buffer) WriteByte(p byte) error {
 	if w.cursor >= w.length {
-		w.length = (w.length + 1) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(1)
 	}
 	w.data[w.cursor] = p
 	w.cursor++
@@ -658,10 +659,7 @@ func (w *Buffer) WriteRune(r rune) (int, error) {
 func (w *Buffer) Write2Bytes(p1, p2 byte) error {
 	c := w.cursor
 	if c + 2 > w.length {
-		w.length = (w.length + 2) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(2)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -673,10 +671,7 @@ func (w *Buffer) Write2Bytes(p1, p2 byte) error {
 func (w *Buffer) Write3Bytes(p1, p2, p3 byte) error {
 	c := w.cursor
 	if c + 3 > w.length {
-		w.length = (w.length + 3) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(3)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -689,10 +684,7 @@ func (w *Buffer) Write3Bytes(p1, p2, p3 byte) error {
 func (w *Buffer) Write4Bytes(p1, p2, p3, p4 byte) error {
 	c := w.cursor
 	if c + 4 > w.length {
-		w.length = (w.length + 4) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(4)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -706,10 +698,7 @@ func (w *Buffer) Write4Bytes(p1, p2, p3, p4 byte) error {
 func (w *Buffer) Write5Bytes(p1, p2, p3, p4, p5 byte) error {
 	c := w.cursor
 	if c + 5 > w.length {
-		w.length = (w.length + 5) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(5)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -724,10 +713,7 @@ func (w *Buffer) Write5Bytes(p1, p2, p3, p4, p5 byte) error {
 func (w *Buffer) Write6Bytes(p1, p2, p3, p4, p5, p6 byte) error {
 	c := w.cursor
 	if c + 6 > w.length {
-		w.length = (w.length + 6) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(6)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -743,10 +729,7 @@ func (w *Buffer) Write6Bytes(p1, p2, p3, p4, p5, p6 byte) error {
 func (w *Buffer) Write7Bytes(p1, p2, p3, p4, p5, p6, p7 byte) error {
 	c := w.cursor
 	if c + 7 > w.length {
-		w.length = (w.length + 7) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(7)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -763,10 +746,7 @@ func (w *Buffer) Write7Bytes(p1, p2, p3, p4, p5, p6, p7 byte) error {
 func (w *Buffer) Write8Bytes(p1, p2, p3, p4, p5, p6, p7, p8 byte) error {
 	c := w.cursor
 	if c + 8 > w.length {
-		w.length = (w.length + 8) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(8)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
@@ -784,10 +764,7 @@ func (w *Buffer) Write8Bytes(p1, p2, p3, p4, p5, p6, p7, p8 byte) error {
 func (w *Buffer) Write9Bytes(p1, p2, p3, p4, p5, p6, p7, p8, p9 byte) error {
 	c := w.cursor
 	if c + 9 > w.length {
-		w.length = (w.length + 9) * 2
-		newAr := make([]byte, w.length)
-		copy(newAr, w.data)
-		w.data = newAr
+		w.grow(9)
 	}
 	w.data[c] = p1
 	w.data[c + 1] = p2
