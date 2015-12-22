@@ -53,8 +53,8 @@ type Writer struct {
 
 // Creates a new buffered writer wrapping an io.Writer
 func NewWriter(f io.Writer) *Writer {
-	if _, ok := f.(*Writer); ok { // If it's already a Writer then don't create a new writer around it
-		return f
+	if nf, ok := f.(*Writer); ok { // If it's already a Writer then don't create a new writer around it
+		return nf
 	} else {
 		return &Writer{w: f, data: pool.Get(bufferLen)}
 	}
