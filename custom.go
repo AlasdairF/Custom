@@ -42,6 +42,42 @@ const (
 	rune3Max = 1<<16 - 1
 )
 
+// -------- INTERFACE --------
+
+type Interface interface {
+	Write([]byte) (int, error)
+	WriteString(string) (int, error)
+	WriteByte(byte) error
+	WriteRune(rune) (int, error)
+	Write2Bytes(byte, byte) error
+	Write3Bytes(byte, byte, byte) error
+	Write4Bytes(byte, byte, byte, byte) error
+	Write5Bytes(byte, byte, byte, byte, byte) error
+	Write6Bytes(byte, byte, byte, byte, byte, byte) error
+	Write7Bytes(byte, byte, byte, byte, byte, byte, byte) error
+	Write8Bytes(byte, byte, byte, byte, byte, byte, byte, byte) error
+	Write9Bytes(byte, byte, byte, byte, byte, byte, byte, byte, byte) error
+	WriteBool(bool) error
+	Write2Bools(bool, bool) error
+	Write8Bools(bool, bool, bool, bool, bool, bool, bool, bool) error
+	Write2Uint4s(uint8, uint8) error
+	WriteUint16(uint16) error
+	WriteUint16Variable(uint16) error
+	WriteInt16Variable(int16) error
+	WriteUint24(uint32) error
+	WriteUint32(uint32) error
+	WriteUint48(uint64) error
+	WriteUint64(uint64) error
+	WriteUint64Variable(uint64) error
+	Write2Uint64sVariable(uint64, uint64) error
+	WriteFloat32(float32) error
+	WriteFloat64(float64) error
+	WriteString8(string) (int, error)
+	WriteString16(string) (int, error)
+	WriteString32(string) (int, error)
+	Close() error
+}
+
 // -------- FIXED BUFFER WRITER --------
 
 type Writer struct {
