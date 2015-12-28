@@ -1040,12 +1040,13 @@ func (w *Buffer) String() string {
 }
 
 // Releases the buffer back to the pool
-func (w *Buffer) Close() {
+func (w *Buffer) Close() error {
 	if w.length == bufferLen {
 		pool.Return(w.data)
 		w.length = 0
 		w.data = nil
 	}
+	return nil
 }
 
 func numbytes(v uint64) uint8 {
