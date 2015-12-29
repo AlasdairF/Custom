@@ -75,6 +75,7 @@ type Interface interface {
 	WriteString8(string) (int, error)
 	WriteString16(string) (int, error)
 	WriteString32(string) (int, error)
+	WriteAll(a ...interface{}) (int, error)
 	Close() error
 }
 
@@ -589,6 +590,27 @@ func (w *Writer) WriteString32(s string) (n int, err error) {
 	return
 }
 
+// Reflects on the values and writes them all out. Not particularly safe.
+// This function only works with: integer, slice of bytes, string, byte.
+// A slice of anything other than bytes could cause unknown behavior.
+func (w *Writer) WriteAll(a ...interface{}) (int, error) {
+	for _, p := range a {
+		switch reflect.TypeOf(p).Kind() {
+			case reflect.String:
+				return w.WriteString(reflect.ValueOf(p).String())
+			case reflect.Slice: // all slices are assumed to be slices of bytes
+				return w.Write(reflect.ValueOf(p).Bytes())
+			case reflect.Uint8: // byte
+				return 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
+			case reflect.Int: case reflect.Int8: case reflect.Int16: case reflect.Int32: case reflect.Int64:
+				return conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
+			case reflect.Uint: case reflect.Uint16: case reflect.Uint32: case reflect.Uint64:
+				return conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
+		}
+	}
+	return 0, errors.New("custom.Writer.WriteAll: not a supported type")
+}
+
 // Flush the buffer and close the custom.Writer
 func (w *Writer) Close() (err error) {
 	if w.cursor > 0 {
@@ -1014,6 +1036,27 @@ func (w *Buffer) WriteString32(s string) (n int, err error) {
 	}
 	n++
 	return
+}
+
+// Reflects on the values and writes them all out. Not particularly safe.
+// This function only works with: integer, slice of bytes, string, byte.
+// A slice of anything other than bytes could cause unknown behavior.
+func (w *Buffer) WriteAll(a ...interface{}) (int, error) {
+	for _, p := range a {
+		switch reflect.TypeOf(p).Kind() {
+			case reflect.String:
+				return w.WriteString(reflect.ValueOf(p).String())
+			case reflect.Slice: // all slices are assumed to be slices of bytes
+				return w.Write(reflect.ValueOf(p).Bytes())
+			case reflect.Uint8: // byte
+				return 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
+			case reflect.Int: case reflect.Int8: case reflect.Int16: case reflect.Int32: case reflect.Int64:
+				return conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
+			case reflect.Uint: case reflect.Uint16: case reflect.Uint32: case reflect.Uint64:
+				return conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
+		}
+	}
+	return 0, errors.New("custom.Buffer.WriteAll: not a supported type")
 }
 
 // Reset (empty) the buffer
