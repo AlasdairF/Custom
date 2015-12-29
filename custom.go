@@ -96,6 +96,11 @@ func NewWriter(f io.Writer) *Writer {
 	}
 }
 
+// Creates a new buffered writer wrapping an io.Writer which attempts to close the underlying writer when the custom.Writer is closed
+func NewWriterCloser(f io.Writer) *Writer {
+	return &Writer{w: f, data: pool.Get(bufferLen), close: true}
+}
+
 // Creates a new buffered Zlib writer wrapping an io.Writer
 func NewZlibWriter(f io.Writer) *Writer {
 	return &Writer{w: zlib.NewWriter(f), data: pool.Get(bufferLen), close: true}
