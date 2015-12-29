@@ -7,6 +7,7 @@ import (
  "math"
  "io"
  "errors"
+ "reflect"
  "compress/zlib"
  "github.com/AlasdairF/snappy"
 )
