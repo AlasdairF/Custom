@@ -2,6 +2,7 @@ package custom
 
 import (
  "github.com/AlasdairF/Pool"
+ "github.com/AlasdairF/Conv"
  "unicode/utf8"
  "math"
  "io"
