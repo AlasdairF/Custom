@@ -1,19 +1,19 @@
 package custom
 
 import (
- "github.com/AlasdairF/Pool"
  "github.com/AlasdairF/Conv"
  "unicode/utf8"
  "math"
  "io"
  "errors"
  "reflect"
+ "sync"
  "compress/zlib"
  "github.com/AlasdairF/snappy"
 )
 
 const (
-	bufferLen = pool.Size // determined in trials on writing to disk and writing to memory
+	bufferLen = 65536 // determined in trials on writing to disk and writing to memory
 	bufferLenMinus1  = bufferLen - 1
 	bufferLenMinus2  = bufferLen - 2
 	bufferLenMinus3  = bufferLen - 3
@@ -81,6 +81,14 @@ type Interface interface {
 	Close() error
 }
 
+// -------- POOL -------
+
+var pool = sync.Pool{
+    New: func() interface{} {
+        return make([]byte, bufferLen)
+    },
+}
+
 // -------- FIXED BUFFER WRITER --------
 
 type Writer struct {
@@ -95,23 +103,23 @@ func NewWriter(f io.Writer) *Writer {
 	if nf, ok := f.(*Writer); ok { // If it's already a Writer then don't create a new writer around it
 		return nf
 	} else {
-		return &Writer{w: f, data: pool.Get(bufferLen)}
+		return &Writer{w: f, data: pool.Get().([]byte)}
 	}
 }
 
 // Creates a new buffered writer wrapping an io.Writer which attempts to close the underlying writer when the custom.Writer is closed
 func NewWriterCloser(f io.Writer) *Writer {
-	return &Writer{w: f, data: pool.Get(bufferLen), close: true}
+	return &Writer{w: f, data: pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Zlib writer wrapping an io.Writer
 func NewZlibWriter(f io.Writer) *Writer {
-	return &Writer{w: zlib.NewWriter(f), data: pool.Get(bufferLen), close: true}
+	return &Writer{w: zlib.NewWriter(f), data: pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Snappy writer wrapping an io.Writer
 func NewSnappyWriter(f io.Writer) *Writer {
-	return &Writer{w: snappy.NewWriter(f), data: pool.Get(bufferLen), close: true}
+	return &Writer{w: snappy.NewWriter(f), data: pool.Get().([]byte), close: true}
 }
 
 // Write a slice of bytes to the buffer. Implements io.Writer interface
@@ -620,7 +628,7 @@ func (w *Writer) Close() (err error) {
 		w.cursor = 0
 	}
 	if len(w.data) == bufferLen {
-		pool.Return(w.data)
+		pool.Put(w.data)
 		w.data = nil
 	}
 	if w.close {
@@ -655,19 +663,20 @@ type Buffer struct {
 // Creates a new buffer
 func NewBuffer(l int) *Buffer {
 	if l <= bufferLen {
-		return &Buffer{data: pool.Get(bufferLen), length: bufferLen}
+		return &Buffer{data: pool.Get().([]byte), length: bufferLen}
 	} else {
 		return &Buffer{data: make([]byte, l), length: l}
 	}
 }
 
 func (w *Buffer) grow(l int) {
-	w.length = (w.length + l) * 2
-	newAr := make([]byte, w.length)
+	newLength := (w.length + l) * 2
+	newAr := make([]byte, newLength)
 	copy(newAr, w.data)
 	if w.length == bufferLen {
-		pool.Return(w.data)
+		pool.Put(w.data)
 	}
+	w.length = newLength
 	w.data = newAr
 }
 
@@ -1092,7 +1101,7 @@ func (w *Buffer) String() string {
 // Releases the buffer back to the pool
 func (w *Buffer) Close() error {
 	if w.length == bufferLen {
-		pool.Return(w.data)
+		pool.Put(w.data)
 		w.length = 0
 		w.data = nil
 	}
@@ -1125,7 +1134,7 @@ type Reader struct {
 
 // Creates a new buffered reader wrapping an io.Reader
 func NewReader(f io.Reader) *Reader {
-	return &Reader{f: f, buf: pool.Get(bufferLen)}
+	return &Reader{f: f, buf: pool.Get().([]byte)}
 }
 
 // Creates a new buffered reader wrapping an io.Reader which contains Zlib compressed data
@@ -1134,12 +1143,12 @@ func NewZlibReader(f io.Reader) *Reader {
 	if err != nil {
 		panic(err)
 	}
-	return &Reader{f: z, buf: pool.Get(bufferLen), close: true}
+	return &Reader{f: z, buf: pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered reader wrapping an io.Reader which contains Snappy compressed data
 func NewSnappyReader(f io.Reader) *Reader {
-	return &Reader{f: snappy.NewReader(f), buf: pool.Get(bufferLen), close: true}
+	return &Reader{f: snappy.NewReader(f), buf: pool.Get().([]byte), close: true}
 }
 
 func (r *Reader) fill(x int) error {
@@ -1587,7 +1596,7 @@ func (r *Reader) EOF() error {
 
 // Releases the buffer back to the pool
 func (r *Reader) Close() error {
-	pool.Return(r.buf)
+	pool.Put(r.buf)
 	r.buf = nil
 	if r.close {
 		if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying reader if it has a Close() method
