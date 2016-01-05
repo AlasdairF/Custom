@@ -22,6 +22,7 @@ const (
 	bufferLenMinus6  = bufferLen - 6
 	bufferLenMinus7  = bufferLen - 7
 	bufferLenMinus8  = bufferLen - 8
+	bufferLenMinus512 = bufferLen - 512
 )
 
 // Constants stolen from unicode/utf8 for WriteRune
@@ -87,6 +88,32 @@ var pool = sync.Pool{
     New: func() interface{} {
         return make([]byte, bufferLen)
     },
+}
+
+// -------- COPY --------
+
+func Copy(r io.Reader, w io.Writer) error {
+	b := pool.Get().([]byte)
+	defer pool.Put(b)
+	var n int
+	for {
+		m, err = r.Read(b[n:])
+		n += m
+		if err == io.EOF {
+			_, err = w.Write(b[0:n])
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if n >= bufferLenMinus512 {
+			_, err = w.Write(b[0:n])
+			if err != nil {
+				return err
+			}
+			n = 0
+		}
+	}
 }
 
 // -------- FIXED BUFFER WRITER --------
