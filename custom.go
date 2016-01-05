@@ -92,7 +92,7 @@ var pool = sync.Pool{
 
 // -------- COPY --------
 
-func Copy(r io.Reader, w io.Writer) error {
+func Copy(w io.Writer, r io.Reader) error {
 	b := pool.Get().([]byte)
 	defer pool.Put(b)
 	var n int
