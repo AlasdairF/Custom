@@ -95,7 +95,8 @@ var pool = sync.Pool{
 func Copy(w io.Writer, r io.Reader) error {
 	b := pool.Get().([]byte)
 	defer pool.Put(b)
-	var n int
+	var m, n int
+	var err error
 	for {
 		m, err = r.Read(b[n:])
 		n += m
