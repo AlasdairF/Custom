@@ -92,35 +92,38 @@ var pool = sync.Pool{
 
 // -------- COPY --------
 
-func Copy(w io.Writer, r io.Reader) error {
+func Copy(w io.Writer, r io.Reader) (t int, err error) {
 	b := pool.Get().([]byte)
 	defer pool.Put(b)
 	var m, n int
-	var err error
 	for {
 		m, err = r.Read(b[n:])
 		n += m
 		if err == io.EOF {
 			_, err = w.Write(b[0:n])
-			return err
+			t += n
+			return
 		}
 		if err != nil {
-			return err
+			t += n
+			return
 		}
 		if n >= bufferLenMinus512 {
 			_, err = w.Write(b[0:n])
+			t += n
 			if err != nil {
-				return err
+				return
 			}
 			n = 0
 		}
 	}
 }
 
-func CopyFile(w io.Writer, filename string) error {
-	r, err := os.Open(filename)
+func CopyFile(w io.Writer, filename string) (t int, err error) {
+	var r *os.File
+	r, err = os.Open(filename)
 	if err != nil {
-		return err
+		return
 	}
 	b := pool.Get().([]byte)
 	defer pool.Put(b)
@@ -130,15 +133,18 @@ func CopyFile(w io.Writer, filename string) error {
 		n += m
 		if err == io.EOF {
 			_, err = w.Write(b[0:n])
-			return err
+			t += n
+			return
 		}
 		if err != nil {
-			return err
+			t += n
+			return
 		}
 		if n >= bufferLenMinus512 {
 			_, err = w.Write(b[0:n])
+			t += n
 			if err != nil {
-				return err
+				return
 			}
 			n = 0
 		}
