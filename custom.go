@@ -117,6 +117,34 @@ func Copy(w io.Writer, r io.Reader) error {
 	}
 }
 
+func CopyFile(w io.Writer, filename string) error {
+	r, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	b := pool.Get().([]byte)
+	defer pool.Put(b)
+	var m, n int
+	for {
+		m, err = r.Read(b[n:])
+		n += m
+		if err == io.EOF {
+			_, err = w.Write(b[0:n])
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if n >= bufferLenMinus512 {
+			_, err = w.Write(b[0:n])
+			if err != nil {
+				return err
+			}
+			n = 0
+		}
+	}
+}
+
 // -------- FIXED BUFFER WRITER --------
 
 type Writer struct {
