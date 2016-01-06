@@ -5,6 +5,7 @@ import (
  "unicode/utf8"
  "math"
  "io"
+ "os"
  "errors"
  "reflect"
  "sync"
