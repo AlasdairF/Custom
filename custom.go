@@ -126,6 +126,7 @@ func CopyFile(w io.Writer, filename string) (t int, err error) {
 	if err != nil {
 		return
 	}
+	defer r.Close()
 	b := pool.Get().([]byte)
 	defer pool.Put(b)
 	var m, n int
