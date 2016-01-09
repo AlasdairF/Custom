@@ -667,22 +667,30 @@ func (w *Writer) WriteString32(s string) (n int, err error) {
 // Reflects on the values and writes them all out. Not particularly safe.
 // This function only works with: integer, slice of bytes, string, byte.
 // A slice of anything other than bytes could cause unknown behavior.
-func (w *Writer) WriteAll(a ...interface{}) (int, error) {
+func (w *Writer) WriteAll(a ...interface{}) (n int, err error) {
+	var i int
 	for _, p := range a {
 		switch reflect.TypeOf(p).Kind() {
 			case reflect.String:
-				return w.WriteString(reflect.ValueOf(p).String())
+				i, err = w.WriteString(reflect.ValueOf(p).String())
 			case reflect.Slice: // all slices are assumed to be slices of bytes
-				return w.Write(reflect.ValueOf(p).Bytes())
+				i, err = w.Write(reflect.ValueOf(p).Bytes())
 			case reflect.Uint8: // byte
-				return 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
+				i, err = 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
 			case reflect.Int: case reflect.Int8: case reflect.Int16: case reflect.Int32: case reflect.Int64:
-				return conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
+				i, err = conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
 			case reflect.Uint: case reflect.Uint16: case reflect.Uint32: case reflect.Uint64:
-				return conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
+				i, err = conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
+			default:
+				err = errors.New("custom.Buffer.WriteAll: not a supported type")
+				return
 		}
+		if err != nil {
+			return
+		}
+		n += i
 	}
-	return 0, errors.New("custom.Writer.WriteAll: not a supported type")
+	return
 }
 
 // Flush the buffer and close the custom.Writer
@@ -1116,22 +1124,30 @@ func (w *Buffer) WriteString32(s string) (n int, err error) {
 // Reflects on the values and writes them all out. Not particularly safe.
 // This function only works with: integer, slice of bytes, string, byte.
 // A slice of anything other than bytes could cause unknown behavior.
-func (w *Buffer) WriteAll(a ...interface{}) (int, error) {
+func (w *Buffer) WriteAll(a ...interface{}) (n int, err error) {
+	var i int
 	for _, p := range a {
 		switch reflect.TypeOf(p).Kind() {
 			case reflect.String:
-				return w.WriteString(reflect.ValueOf(p).String())
+				i, err = w.WriteString(reflect.ValueOf(p).String())
 			case reflect.Slice: // all slices are assumed to be slices of bytes
-				return w.Write(reflect.ValueOf(p).Bytes())
+				i, err = w.Write(reflect.ValueOf(p).Bytes())
 			case reflect.Uint8: // byte
-				return 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
+				i, err = 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
 			case reflect.Int: case reflect.Int8: case reflect.Int16: case reflect.Int32: case reflect.Int64:
-				return conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
+				i, err = conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
 			case reflect.Uint: case reflect.Uint16: case reflect.Uint32: case reflect.Uint64:
-				return conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
+				i, err = conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
+			default:
+				err = errors.New("custom.Buffer.WriteAll: not a supported type")
+				return
 		}
+		if err != nil {
+			return
+		}
+		n += i
 	}
-	return 0, errors.New("custom.Buffer.WriteAll: not a supported type")
+	return
 }
 
 // Reset (empty) the buffer
