@@ -80,6 +80,7 @@ type Interface interface {
 	WriteString16(string) (int, error)
 	WriteString32(string) (int, error)
 	WriteAll(a ...interface{}) (int, error)
+	WriteInt(int) (int, error)
 	Close() error
 }
 
@@ -263,6 +264,11 @@ func (w *Writer) WriteRune(r rune) (int, error) {
 		err := w.Write4Bytes(t4 | byte(r>>18), tx | byte(r>>12)&maskx, tx | byte(r>>6)&maskx, tx | byte(r)&maskx)
 		return 4, err
 	}
+}
+
+// Write an integer in its ASCII form (not bitpacked)
+func (w *Writer) WriteInt(p int) (int, error) {
+	return conv.Write(w, p, 0)
 }
 
 // Write 2 bytes to the buffer
@@ -803,6 +809,11 @@ func (w *Buffer) WriteRune(r rune) (int, error) {
 		err := w.Write4Bytes(t4 | byte(r>>18), tx | byte(r>>12)&maskx, tx | byte(r>>6)&maskx, tx | byte(r)&maskx)
 		return 4, err
 	}
+}
+
+// Write an integer in its ASCII form (not bitpacked)
+func (w *Buffer) WriteInt(p int) (int, error) {
+	return conv.Write(w, p, 0)
 }
 
 // Write 2 bytes to the buffer
