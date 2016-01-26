@@ -672,6 +672,7 @@ func (w *Writer) WriteString32(s string) (n int, err error) {
 
 // Reflects on the values and writes them all out. Not particularly safe.
 // This function only works with: integer, slice of bytes, string, byte.
+// uint8 is written as byte. int32 is written as rune. Other integers are written as ASCII representation of their number.
 // A slice of anything other than bytes could cause unknown behavior.
 func (w *Writer) WriteAll(a ...interface{}) (n int, err error) {
 	var i int
@@ -683,9 +684,11 @@ func (w *Writer) WriteAll(a ...interface{}) (n int, err error) {
 				i, err = w.Write(reflect.ValueOf(p).Bytes())
 			case reflect.Uint8: // byte
 				i, err = 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
-			case reflect.Int: case reflect.Int8: case reflect.Int16: case reflect.Int32: case reflect.Int64:
+			case reflect.Int32: // rune
+				i, err = w.WriteRune(rune(reflect.ValueOf(p).Int()))
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int64:
 				i, err = conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
-			case reflect.Uint: case reflect.Uint16: case reflect.Uint32: case reflect.Uint64:
+			case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 				i, err = conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
 			default:
 				err = errors.New("custom.Buffer.WriteAll: not a supported type")
@@ -1134,6 +1137,7 @@ func (w *Buffer) WriteString32(s string) (n int, err error) {
 
 // Reflects on the values and writes them all out. Not particularly safe.
 // This function only works with: integer, slice of bytes, string, byte.
+// uint8 is written as byte. int32 is written as rune. Other integers are written as ASCII representation of their number.
 // A slice of anything other than bytes could cause unknown behavior.
 func (w *Buffer) WriteAll(a ...interface{}) (n int, err error) {
 	var i int
@@ -1145,9 +1149,11 @@ func (w *Buffer) WriteAll(a ...interface{}) (n int, err error) {
 				i, err = w.Write(reflect.ValueOf(p).Bytes())
 			case reflect.Uint8: // byte
 				i, err = 1, w.WriteByte(byte(reflect.ValueOf(p).Uint()))
-			case reflect.Int: case reflect.Int8: case reflect.Int16: case reflect.Int32: case reflect.Int64:
+			case reflect.Int32: // rune
+				i, err = w.WriteRune(rune(reflect.ValueOf(p).Int()))
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int64:
 				i, err = conv.Write(w, int(reflect.ValueOf(p).Int()), 0)
-			case reflect.Uint: case reflect.Uint16: case reflect.Uint32: case reflect.Uint64:
+			case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 				i, err = conv.Write(w, int(reflect.ValueOf(p).Uint()), 0)
 			default:
 				err = errors.New("custom.Buffer.WriteAll: not a supported type")
