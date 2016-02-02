@@ -1661,17 +1661,17 @@ func (r *Reader) ReadString32() string {
 }
 
 // Read and decode a string encoded with WriteString8 as slice of bytes
-func (r *Reader) ReadBytes8() string {
+func (r *Reader) ReadBytes8() []byte {
 	return r.Readx(int(r.ReadByte()))
 }
 
 // Read and decode a string encoded with WriteString16 as slice of bytes
-func (r *Reader) ReadBytes16() string {
+func (r *Reader) ReadBytes16() []byte {
 	return r.Readx(int(r.ReadUint16()))
 }
 
 // Read and decode a string encoded with WriteString32 as slice of bytes
-func (r *Reader) ReadBytes32() string {
+func (r *Reader) ReadBytes32() []byte {
 	return r.Readx(int(r.ReadUint32()))
 }
 
@@ -1985,17 +1985,17 @@ func (r *BytesReader) ReadString32() string {
 }
 
 // Read and decode a string encoded with WriteString8 as slice of bytes
-func (r *BytesReader) ReadBytes8() string {
+func (r *BytesReader) ReadBytes8() []byte {
 	return r.Readx(int(r.ReadByte()))
 }
 
 // Read and decode a string encoded with WriteString16 as slice of bytes
-func (r *BytesReader) ReadBytes16() string {
+func (r *BytesReader) ReadBytes16() []byte {
 	return r.Readx(int(r.ReadUint16()))
 }
 
 // Read and decode a string encoded with WriteString32 as slice of bytes
-func (r *BytesReader) ReadBytes32() string {
+func (r *BytesReader) ReadBytes32() []byte {
 	return r.Readx(int(r.ReadUint32()))
 }
 
