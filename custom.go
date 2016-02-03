@@ -9,7 +9,7 @@ import (
  "errors"
  "reflect"
  "sync"
- "compress/zlib"
+ "github.com/klauspost/compress/zlib"
  "github.com/AlasdairF/snappy"
 )
 
