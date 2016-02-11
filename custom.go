@@ -750,6 +750,27 @@ func NewBuffer(l int) *Buffer {
 	}
 }
 
+// Reads all of r into the buffer
+func (w *Buffer) ReadFrom(r io.Reader) (int, error) {
+	var i, n int
+	var err error
+	for {
+		if w.cursor < w.length - 512 {
+			w.grow(1)
+		}
+		i, err = r.Read(w.data[w.cursor:])
+		w.cursor += i
+		n += i
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
 func (w *Buffer) grow(l int) {
 	newLength := (w.length + l) * 2
 	newAr := make([]byte, newLength)
