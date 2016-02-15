@@ -245,6 +245,22 @@ func (w *Writer) WriteByte(p byte) error {
 	return err
 }
 
+// Write a newline /n to the buffer
+func (w *Writer) Writeln() error {
+	if w.cursor < bufferLen {
+		w.data[w.cursor] = "\n"
+		w.cursor++
+		return nil
+	}
+	var err error
+	if w.cursor > 0 {
+		_, err = w.w.Write(w.data[0:w.cursor]) // flush
+	}
+	w.data[0] = "\n"
+	w.cursor = 1
+	return err
+}
+
 // Write a rune to the buffer as UTF8
 func (w *Writer) WriteRune(r rune) (int, error) {
 	switch i := uint32(r); {
@@ -810,6 +826,16 @@ func (w *Buffer) WriteByte(p byte) error {
 		w.grow(1)
 	}
 	w.data[w.cursor] = p
+	w.cursor++
+	return nil
+}
+
+// Write a line \n to the buffer
+func (w *Buffer) Writeln() error {
+	if w.cursor >= w.length {
+		w.grow(1)
+	}
+	w.data[w.cursor] = "\n"
 	w.cursor++
 	return nil
 }
