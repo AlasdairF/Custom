@@ -750,6 +750,25 @@ func (w *Writer) Flush() (err error) {
 	return
 }
 
+func (w *Writer) Reset(w io.Writer) (err error) {
+	if w.cursor > 0 {
+		_, err = w.w.Write(w.data[0:w.cursor])
+		w.cursor = 0
+	}
+	if w.close {
+		if sw, ok := w.w.(io.Closer); ok { // Attempt to close underlying writer if it has a Close() method
+			if err == nil {
+				err = sw.Close()
+			} else {
+				sw.Close()
+			}
+		}
+		w.close = false
+	}
+	w.w = w
+	return
+}
+
 // -------- GROWING BUFFER --------
 
 type Buffer struct {
