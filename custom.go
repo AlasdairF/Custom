@@ -1763,12 +1763,16 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	return 0, errors.New(`Does not implement io.Seeker`)
 }
 
-// Checks whether the end of the underlying io.Reader has been reached. Returns nil if this is already the end.
+// Checks whether the end of the underlying io.Reader has been reached. Returns nil if this is already the end. This is safe to do at any time whilst reading to check if the end is reached.
 func (r *Reader) EOF() error {
 	if r.n > 0 {
 		return ErrNotEOF
 	}
-	_, err := r.f.Read(r.buf)
+	m, err := r.f.Read(r.buf)
+	if err != nil {
+		return err
+	}
+	r.n = m
 	if err == io.EOF {
 		return nil
 	}
