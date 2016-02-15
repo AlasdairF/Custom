@@ -1769,9 +1769,6 @@ func (r *Reader) EOF() error {
 		return ErrNotEOF
 	}
 	m, err := r.f.Read(r.buf)
-	if err != nil {
-		return err
-	}
 	r.n = m
 	if err == io.EOF {
 		return nil
