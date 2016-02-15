@@ -248,7 +248,7 @@ func (w *Writer) WriteByte(p byte) error {
 // Write a newline /n to the buffer
 func (w *Writer) Writeln() error {
 	if w.cursor < bufferLen {
-		w.data[w.cursor] = "\n"
+		w.data[w.cursor] = '\n'
 		w.cursor++
 		return nil
 	}
@@ -256,7 +256,7 @@ func (w *Writer) Writeln() error {
 	if w.cursor > 0 {
 		_, err = w.w.Write(w.data[0:w.cursor]) // flush
 	}
-	w.data[0] = "\n"
+	w.data[0] = '\n'
 	w.cursor = 1
 	return err
 }
@@ -751,7 +751,7 @@ func (w *Writer) Flush() (err error) {
 }
 
 // Flushes the buffer to the underlying writer, closing it if this is a WriterCloser and then transfers to a new writer (no longer a WriterCloser)
-func (w *Writer) Reset(w io.Writer) (err error) {
+func (w *Writer) Reset(newwriter io.Writer) (err error) {
 	if w.cursor > 0 {
 		_, err = w.w.Write(w.data[0:w.cursor])
 		w.cursor = 0
@@ -766,7 +766,7 @@ func (w *Writer) Reset(w io.Writer) (err error) {
 		}
 		w.close = false
 	}
-	w.w = w
+	w.w = newwriter
 	return
 }
 
@@ -855,7 +855,7 @@ func (w *Buffer) Writeln() error {
 	if w.cursor >= w.length {
 		w.grow(1)
 	}
-	w.data[w.cursor] = "\n"
+	w.data[w.cursor] = '\n'
 	w.cursor++
 	return nil
 }
