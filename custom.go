@@ -46,6 +46,8 @@ const (
 	rune3Max = 1<<16 - 1
 )
 
+var ErrNotEOF = errors.New(`Not EOF`)
+
 // -------- INTERFACE --------
 
 type Interface interface {
@@ -648,42 +650,42 @@ func (w *Writer) WriteFloat64(flt float64) error {
 }
 
 // Write a string to the buffer with maximum length 255
-func (w *Writer) WriteString8(s string) (n int, err error) {
-	n = len(s)
-	w.WriteByte(uint8(n))
-	if n > 255 {
-		n, err = w.WriteString(s[0:255])
+func (w *Writer) WriteString8(s string) (int, error) {
+	if len(s) > 255 {
+		w.WriteByte(255)
+		_, err := w.WriteString(s[0:255])
+		return 256, err
 	} else {
-		n, err = w.WriteString(s)
+		w.WriteByte(uint8(n))
+		_, err := w.WriteString(s)
+		return len(s) + 1, err
 	}
-	n++
-	return
 }
 
 // Write a string to the buffer with maximum length 65,535
-func (w *Writer) WriteString16(s string) (n int, err error) {
-	n = len(s)
-	w.WriteUint16(uint16(n))
-	if n > 65535 {
-		n, err = w.WriteString(s[0:65535])
+func (w *Writer) WriteString16(s string) (int, error) {
+	if len(s) > 65535 {
+		w.WriteByte(65535)
+		_, err := w.WriteString(s[0:65535])
+		return 65537, err
 	} else {
-		n, err = w.WriteString(s)
+		w.WriteByte(uint16(len(s)))
+		_, err := w.WriteString(s)
+		return len(s) + 2, err
 	}
-	n += 2
-	return
 }
 
 // Write a string to the buffer with maximum length 4,294,967,295
-func (w *Writer) WriteString32(s string) (n int, err error) {
-	n = len(s)
-	w.WriteUint32(uint32(n))
-	if n > 4294967295 {
-		n, err = w.WriteString(s[0:4294967295])
+func (w *Writer) WriteString32(s string) (int, error) {
+	if len(s) > 4294967295 {
+		w.WriteByte(4294967295)
+		_, err := w.WriteString(s[0:4294967295])
+		return 4294967299, err
 	} else {
-		n, err = w.WriteString(s)
+		w.WriteByte(uint32(len(s)))
+		_, err := w.WriteString(s)
+		return len(s) + 4, err
 	}
-	n += 4
-	return
 }
 
 // Reflects on the values and writes them all out. Not particularly safe.
@@ -1164,42 +1166,42 @@ func (w *Buffer) WriteFloat64(flt float64) error {
 }
 
 // Write a string to the buffer with maximum length 255
-func (w *Buffer) WriteString8(s string) (n int, err error) {
-	n = len(s)
-	w.WriteByte(uint8(n))
-	if n > 255 {
-		n, err = w.WriteString(s[0:255])
+func (w *Buffer) WriteString8(s string) (int, error) {
+	if len(s) > 255 {
+		w.WriteByte(255)
+		_, err := w.WriteString(s[0:255])
+		return 256, err
 	} else {
-		n, err = w.WriteString(s)
+		w.WriteByte(uint8(n))
+		_, err := w.WriteString(s)
+		return len(s) + 1, err
 	}
-	n++
-	return
 }
 
 // Write a string to the buffer with maximum length 65,535
-func (w *Buffer) WriteString16(s string) (n int, err error) {
-	n = len(s)
-	w.WriteUint16(uint16(n))
-	if n > 65535 {
-		n, err = w.WriteString(s[0:65535])
+func (w *Buffer) WriteString16(s string) (int, error) {
+	if len(s) > 65535 {
+		w.WriteByte(65535)
+		_, err := w.WriteString(s[0:65535])
+		return 65537, err
 	} else {
-		n, err = w.WriteString(s)
+		w.WriteByte(uint16(len(s)))
+		_, err := w.WriteString(s)
+		return len(s) + 2, err
 	}
-	n++
-	return
 }
 
 // Write a string to the buffer with maximum length 4,294,967,295
-func (w *Buffer) WriteString32(s string) (n int, err error) {
-	n = len(s)
-	w.WriteUint32(uint32(n))
-	if n > 4294967295 {
-		n, err = w.WriteString(s[0:4294967295])
+func (w *Buffer) WriteString32(s string) (int, error) {
+	if len(s) > 4294967295 {
+		w.WriteByte(4294967295)
+		_, err := w.WriteString(s[0:4294967295])
+		return 4294967299, err
 	} else {
-		n, err = w.WriteString(s)
+		w.WriteByte(uint32(len(s)))
+		_, err := w.WriteString(s)
+		return len(s) + 4, err
 	}
-	n++
-	return
 }
 
 // Reflects on the values and writes them all out. Not particularly safe.
@@ -1763,12 +1765,15 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 
 // Checks whether the end of the underlying io.Reader has been reached. Returns nil if this is already the end.
 func (r *Reader) EOF() error {
+	if r.n > 0 {
+		return ErrNotEOF
+	}
 	_, err := r.f.Read(r.buf)
 	if err == io.EOF {
 		return nil
 	}
 	if err == nil {
-		return errors.New(`Not EOF`)
+		return ErrNotEOF
 	}
 	return err
 }
@@ -2096,6 +2101,6 @@ func (r *BytesReader) EOF() error {
 	if r.cursor >= len(r.data) {
 		return nil
 	}
-	return errors.New(`Not EOF`)
+	return ErrNotEOF
 }
 
