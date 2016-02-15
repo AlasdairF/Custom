@@ -750,6 +750,7 @@ func (w *Writer) Flush() (err error) {
 	return
 }
 
+// Flushes the buffer to the underlying writer, closing it if this is a WriterCloser and then transfers to a new writer (no longer a WriterCloser)
 func (w *Writer) Reset(w io.Writer) (err error) {
 	if w.cursor > 0 {
 		_, err = w.w.Write(w.data[0:w.cursor])
