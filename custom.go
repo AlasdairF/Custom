@@ -1295,7 +1295,7 @@ type Reader struct {
 	at int		// the cursor for where I am in buf
 	n int		// how much uncompressed but as of yet unparsed data is left in buf
 	buf []byte	// the buffer for reading data
-	close bool
+	close, eof bool
 }
 
 // Creates a new buffered reader wrapping an io.Reader
@@ -1321,16 +1321,16 @@ func (r *Reader) fill(x int) error {
 	copy(r.buf, r.buf[r.at:r.at+r.n])
 	r.at = 0
 	m, err := r.f.Read(r.buf[r.n:])
+	r.n += m
 	if err != nil {
 		return err
 	}
-	r.n += m
 	for r.n < x {
 		m, err = r.f.Read(r.buf[r.n:])
+		r.n += m
 		if err != nil {
 			return err
 		}
-		r.n += m
 	}
 	return nil
 }
@@ -1338,10 +1338,10 @@ func (r *Reader) fill(x int) error {
 func (r *Reader) fill1() {
 	r.at = 0
 	m, err := r.f.Read(r.buf)
+	r.n = m
 	if err != nil {
 		panic(err)
 	}
-	r.n = m
 }
 
 // Populate slice of bytes
@@ -1356,15 +1356,16 @@ func (r *Reader) Read(b []byte) (int, error) {
 		}
 		return x, nil
 	}
+	var err error
 	if r.n < x {
-		if err := r.fill(x); err != nil {
-			return 0, err
+		if err = r.fill(x); err == io.EOF {
+			x = r.n
 		}
 	}
 	copy(b, r.buf[r.at:r.at+x]) // must be copied to avoid memory leak
 	r.at += x
 	r.n -= x
-	return x, nil
+	return x, err
 }
 
 // Reads x bytes and returns this slice of bytes as a copy.
