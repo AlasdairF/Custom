@@ -1805,10 +1805,18 @@ func NewBytesReader(p []byte) *BytesReader {
 }
 
 // Populate slice of bytes (copy)
-func (r *BytesReader) Read(p []byte) (int, error) {
-	n := copy(p, r.data[r.cursor:r.cursor+len(p)])
-	r.cursor += n
-	return n, nil
+func (r *BytesReader) Read(p []byte) (n int, err error) {
+	if to := r.cursor + len(p); to < r.length {
+		n = copy(p, r.data[r.cursor:to])
+		r.cursor += n
+	} else {
+		if r.cursor < r.length {
+			n = copy(p, r.data[r.cursor:])
+			r.cursor += n
+		}
+		err = io.EOF
+	}
+	return
 }
 
 // Read x bytes and returns this slice of bytes as a copy
