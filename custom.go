@@ -793,7 +793,7 @@ func (w *Buffer) ReadFrom(r io.Reader) (int, error) {
 	var i, n int
 	var err error
 	for {
-		if w.cursor < w.length - 512 {
+		if w.cursor >= w.length - 512 {
 			w.grow(1)
 		}
 		i, err = r.Read(w.data[w.cursor:])
