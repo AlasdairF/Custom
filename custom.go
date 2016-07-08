@@ -81,9 +81,9 @@ type Interface interface {
 	WriteString8(string) (int, error)
 	WriteString16(string) (int, error)
 	WriteString32(string) (int, error)
-	WriteBytes8(string) (int, error)
-	WriteBytes16(string) (int, error)
-	WriteBytes32(string) (int, error)
+	WriteBytes8([]byte) (int, error)
+	WriteBytes16([]byte) (int, error)
+	WriteBytes32([]byte) (int, error)
 	WriteAll(a ...interface{}) (int, error)
 	WriteInt(int) (int, error)
 	Close() error
