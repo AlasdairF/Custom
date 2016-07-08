@@ -81,6 +81,9 @@ type Interface interface {
 	WriteString8(string) (int, error)
 	WriteString16(string) (int, error)
 	WriteString32(string) (int, error)
+	WriteBytes8(string) (int, error)
+	WriteBytes16(string) (int, error)
+	WriteBytes32(string) (int, error)
 	WriteAll(a ...interface{}) (int, error)
 	WriteInt(int) (int, error)
 	Close() error
@@ -688,6 +691,45 @@ func (w *Writer) WriteString32(s string) (int, error) {
 	}
 }
 
+// Write a slice of bytes to the buffer with maximum length 255
+func (w *Writer) WriteBytes8(s []byte) (int, error) {
+	if len(s) >= 255 {
+		w.WriteByte(255)
+		_, err := w.Write(s[0:255])
+		return 256, err
+	} else {
+		w.WriteByte(uint8(len(s)))
+		_, err := w.Write(s)
+		return len(s) + 1, err
+	}
+}
+
+// Write a slice of bytes to the buffer with maximum length 65,535
+func (w *Writer) WriteBytes16(s []byte) (int, error) {
+	if len(s) >= 65535 {
+		w.WriteUint16(65535)
+		_, err := w.Write(s[0:65535])
+		return 65537, err
+	} else {
+		w.WriteUint16(uint16(len(s)))
+		_, err := w.Write(s)
+		return len(s) + 2, err
+	}
+}
+
+// Write a slice of bytes to the buffer with maximum length 4,294,967,295
+func (w *Writer) WriteBytes32(s []byte) (int, error) {
+	if len(s) >= 4294967295 {
+		w.WriteUint32(4294967295)
+		_, err := w.Write(s[0:4294967295])
+		return 4294967299, err
+	} else {
+		w.WriteUint32(uint32(len(s)))
+		_, err := w.Write(s)
+		return len(s) + 4, err
+	}
+}
+
 // Reflects on the values and writes them all out. Not particularly safe.
 // This function only works with: integer, slice of bytes, string, byte.
 // uint8 is written as byte. int32 is written as rune. Other integers are written as ASCII representation of their number.
@@ -1200,6 +1242,45 @@ func (w *Buffer) WriteString32(s string) (int, error) {
 	} else {
 		w.WriteUint32(uint32(len(s)))
 		_, err := w.WriteString(s)
+		return len(s) + 4, err
+	}
+}
+
+// Write a slice of bytes to the buffer with maximum length 255
+func (w *Buffer) WriteBytes8(s []byte) (int, error) {
+	if len(s) >= 255 {
+		w.WriteByte(255)
+		_, err := w.Write(s[0:255])
+		return 256, err
+	} else {
+		w.WriteByte(uint8(len(s)))
+		_, err := w.Write(s)
+		return len(s) + 1, err
+	}
+}
+
+// Write a slice of bytes to the buffer with maximum length 65,535
+func (w *Buffer) WriteBytes16(s []byte) (int, error) {
+	if len(s) >= 65535 {
+		w.WriteUint16(65535)
+		_, err := w.Write(s[0:65535])
+		return 65537, err
+	} else {
+		w.WriteUint16(uint16(len(s)))
+		_, err := w.Write(s)
+		return len(s) + 2, err
+	}
+}
+
+// Write a slice of bytes to the buffer with maximum length 4,294,967,295
+func (w *Buffer) WriteBytes32(s []byte) (int, error) {
+	if len(s) >= 4294967295 {
+		w.WriteUint32(4294967295)
+		_, err := w.Write(s[0:4294967295])
+		return 4294967299, err
+	} else {
+		w.WriteUint32(uint32(len(s)))
+		_, err := w.Write(s)
 		return len(s) + 4, err
 	}
 }
