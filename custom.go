@@ -832,7 +832,7 @@ func NewBuffer(l int) *Buffer {
 
 // Wraps the written data in a new reader. The original Buffer will need to be closed after all the reading is done.
 func (w *Writer) Reader() *BytesReader {
-	return NewBytesReader(w.data[0:w.length])
+	return NewBytesReader(w.data[0:w.cursor])
 }
 
 // Reads all of r into the buffer
