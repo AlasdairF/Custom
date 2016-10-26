@@ -1409,13 +1409,17 @@ func (r *Reader) fill(x int) error {
 	m, err := r.f.Read(r.buf[r.n:])
 	r.n += m
 	if err != nil {
-		return err
+		if m == 0 {
+			return err
+		}
 	}
 	for r.n < x {
 		m, err = r.f.Read(r.buf[r.n:])
 		r.n += m
 		if err != nil {
-			return err
+			if m == 0 {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1426,7 +1430,9 @@ func (r *Reader) fill1() {
 	m, err := r.f.Read(r.buf)
 	r.n = m
 	if err != nil {
-		panic(err)
+		if m == 0 {
+			panic(err)
+		}
 	}
 }
 
